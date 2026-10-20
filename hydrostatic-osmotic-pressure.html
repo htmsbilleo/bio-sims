@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微血管組織液交換模擬器 — 小動脈→微血管→小靜脈 | 流體壓力與滲透壓 | DSE 生物</title>
+<style>
+:root {
+  --bg: #f3f6fa;
+  --card: #fff;
+  --ink: #1a2332;
+  --muted: #5a6a7a;
+  --accent: #8b3a1a;
+  --accent-teal: #0d6e6e;
+  --plant: #2d8a4e;
+  --animal: #3b6ea5;
+  --cap: #a0451a;
+  --hp: #c62828;
+  --op: #1565c0;
+  --filt: #1565c0;
+  --reabs: #2e7d32;
+  --border: #d0dae6;
+  --shadow: 0 2px 10px rgba(26,35,50,.08);
+  --radius: 10px;
+  --font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  font-size: 15px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 16px 14px 48px; }
+header.app-header {
+  background: linear-gradient(135deg, #6b2a12 0%, #a0451a 45%, #c45c26 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+header.app-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.32rem;
+  font-weight: 700;
+}
+header.app-header .sub { margin: 0; opacity: .93; font-size: .9rem; }
+.assumption {
+  background: #fff8e6;
+  border: 1px solid #e8d48a;
+  border-left: 4px solid #c45c26;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: .86rem;
+  color: #5c4a1a;
+}
+.mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.mode-btn {
+  flex: 1 1 160px;
+  min-height: 48px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 10px 12px;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.mode-btn .mode-en {
+  display: block;
+  font-size: .72rem;
+  font-weight: 500;
+  opacity: .75;
+  margin-top: 2px;
+}
+.mode-btn:hover { border-color: var(--cap); }
+.mode-btn.primary-mode {
+  border-color: #d4a088;
+  box-shadow: 0 0 0 1px rgba(160,69,26,.12);
+}
+.mode-btn.active[data-mode="capillary"] {
+  background: var(--cap); color: #fff; border-color: var(--cap);
+  box-shadow: 0 4px 14px rgba(160,69,26,.35);
+}
+.mode-btn.active[data-mode="plant"] {
+  background: var(--plant); color: #fff; border-color: var(--plant);
+}
+.mode-btn.active[data-mode="animal"] {
+  background: var(--animal); color: #fff; border-color: var(--animal);
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.card.cap-focus h2 { color: var(--cap); }
+.controls label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: .88rem;
+  font-weight: 600;
+}
+.controls .hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: .78rem;
+}
+.controls input[type="range"] {
+  width: 100%;
+  accent-color: var(--cap);
+  cursor: pointer;
+}
+.val-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: .84rem;
+  color: var(--muted);
+}
+.val-row strong { color: var(--ink); font-size: .95rem; }
+.opt-toggle {
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: #f7f3f0;
+  border-radius: 8px;
+  border: 1px solid #e8ddd4;
+  font-size: .85rem;
+}
+.opt-toggle label { display: inline; font-weight: 600; margin: 0; cursor: pointer; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+button.action {
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: var(--cap);
+  color: #fff;
+}
+button.action.secondary {
+  background: #e8eef4;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+button.action:hover { filter: brightness(1.06); }
+.diagram-wrap {
+  position: relative;
+  min-height: 520px;
+  background: #faf6f1;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.diagram-wrap svg { width: 100%; height: auto; display: block; }
+.readouts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 480px) {
+  .readouts { grid-template-columns: 1fr; }
+}
+.readout {
+  background: #f7fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.readout.end-art { border-left: 4px solid var(--hp); }
+.readout.end-ven { border-left: 4px solid var(--reabs); }
+.readout .label { font-size: .74rem; color: var(--muted); margin-bottom: 2px; }
+.readout .value { font-size: .98rem; font-weight: 700; }
+.readout.span2 { grid-column: 1 / -1; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.badge.filtration { background: #dbeafe; color: #1e3a8a; }
+.badge.reabsorb { background: #d1fae5; color: #065f46; }
+.badge.balance { background: #e5e7eb; color: #374151; }
+.badge.turgid { background: #d1fae5; color: #065f46; }
+.badge.flaccid { background: #fef3c7; color: #92400e; }
+.badge.plasmolysed { background: #fee2e2; color: #991b1b; }
+.badge.normal { background: #dbeafe; color: #1e40af; }
+.badge.haemolysis { background: #fecaca; color: #7f1d1d; }
+.badge.crenation { background: #fde68a; color: #78350f; }
+.balance-bar {
+  margin-top: 8px;
+  height: 14px;
+  border-radius: 7px;
+  background: #e5e7eb;
+  overflow: hidden;
+  display: flex;
+}
+.balance-bar .out { background: var(--filt); height: 100%; }
+.balance-bar .in { background: var(--reabs); height: 100%; }
+.formula-box {
+  font-size: .82rem;
+  background: #fff7ed;
+  border: 1px dashed #e8b88a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  color: #5c3d1a;
+}
+.graph-wrap { margin-top: 10px; height: 170px; position: relative; }
+.graph-wrap canvas {
+  width: 100% !important;
+  height: 170px !important;
+  background: #fafcfe;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: .8rem;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.legend span::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.legend .hp::before { background: var(--hp); }
+.legend .op::before { background: var(--op); }
+.legend .net::before { background: #6d28d9; }
+.explain { font-size: .92rem; }
+.explain p { margin: 0 0 8px; }
+.explain ul { margin: 4px 0 8px; padding-left: 1.2em; }
+.questions {
+  background: #faf3ee;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+.questions h3 { margin: 0 0 6px; font-size: .95rem; color: var(--cap); }
+.questions ol { margin: 0; padding-left: 1.3em; }
+.questions li { margin-bottom: 4px; }
+.teacher-notes {
+  margin-top: 18px;
+  border-top: 2px solid var(--border);
+  padding-top: 14px;
+  font-size: .88rem;
+  color: var(--muted);
+}
+.teacher-notes h2 { color: var(--ink); font-size: 1rem; margin: 0 0 8px; }
+.teacher-notes h3 { color: var(--cap); font-size: .92rem; margin: 12px 0 4px; }
+.hidden { display: none !important; }
+.plant-example {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f0faf3;
+  border: 1px solid #b7e0c2;
+  border-radius: 8px;
+  font-size: .84rem;
+}
+.plant-example h3 {
+  margin: 0 0 6px;
+  font-size: .92rem;
+  color: var(--plant);
+}
+.plant-example p { margin: 0 0 8px; color: #3d5a45; }
+.ex-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-btns button {
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #8fbf9a;
+  background: #fff;
+  color: #1a5c2e;
+  cursor: pointer;
+}
+.ex-btns button:hover { background: #d8f0e0; }
+.ex-btns button.ex-primary {
+  background: var(--plant);
+  color: #fff;
+  border-color: var(--plant);
+}
+.secondary-note {
+
+  font-size: .8rem;
+  color: var(--muted);
+  margin: -4px 0 10px;
+}
+footer.print-title { display: none; }
+@media print {
+  body { background: #fff; font-size: 12pt; }
+  header.app-header {
+    background: #fff !important;
+    color: #000 !important;
+    border: 2px solid #000;
+  }
+  .mode-btn, button.action, input[type="range"] { display: none; }
+  footer.print-title {
+    display: block;
+    text-align: center;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .card { break-inside: avoid; box-shadow: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <footer class="print-title">微血管組織液交換（小動脈→微血管→小靜脈）— 流體壓力（fluid pressure）與滲透壓教學模擬｜說明用相對單位</footer>
+
+  <header class="app-header">
+    <h1>微血管組織液交換模擬器</h1>
+    <p class="sub">小動脈（arteriole）分支成微血管網（capillary network）再匯入小靜脈（venule）· 流體壓力／流體力學（fluid pressure）與滲透壓（osmotic pressure）· DSE 生物／初中綜合科學</p>
+  </header>
+
+  <div class="assumption">
+    <strong>模型假設（Assumptions）：</strong>
+    本模擬為<strong>教育簡化模型</strong>。血管側以<strong>流體力學／流體壓力（fluid mechanics / fluid pressure, FP）</strong>理解沿小動脈→微血管網→小靜脈的血壓下降；滲透壓維持稱<strong>滲透壓（osmotic pressure, OP）</strong>。壓力為<strong>相對單位（說明用）</strong>，非真實 mmHg。簡化交換關係：淨壓 ≈ 血管流體壓力 − 有效滲透壓差。預設組織液側壓力 FP<sub>i</sub>≈0；略去淋巴回流與完整血流動力學。課本若寫「血靜水壓（blood hydrostatic pressure）」可對照為本頁的血管流體壓力。植物／動物細胞模式為延伸比較。
+  </div>
+
+  <div class="mode-bar" role="tablist" aria-label="模擬模式">
+    <button type="button" class="mode-btn primary-mode active" data-mode="capillary" role="tab" aria-selected="true">
+      微血管（小動脈→小靜脈）
+      <span class="mode-en">Capillary · arteriole → venule（主要）</span>
+    </button>
+    <button type="button" class="mode-btn" data-mode="plant" role="tab" aria-selected="false">
+      植物細胞
+      <span class="mode-en">Plant cell（延伸）</span>
+    </button>
+    <button type="button" class="mode-btn" data-mode="animal" role="tab" aria-selected="false">
+      動物細胞
+      <span class="mode-en">Animal cell（延伸）</span>
+    </button>
+  </div>
+
+  <div class="grid">
+    <section class="card controls cap-focus" aria-label="參數調控">
+      <h2>參數調控（Parameters）</h2>
+      <p class="secondary-note" id="ctrlHint">主模式：調校兩端流體壓力（血壓）與血漿滲透壓，觀察沿血管床的壓力降與濾過／重吸收。</p>
+
+      <div id="ctrl-cap">
+        <label for="artHP">
+          小動脈端流體壓力／血壓（arteriole-end fluid pressure, FP<sub>a</sub>）
+          <span class="hint">流體力學概念 · 說明用相對單位 · 通常較高 → 利於濾過</span>
+        </label>
+        <input type="range" id="artHP" min="25" max="100" value="72" step="1">
+        <div class="val-row"><span>低</span><strong id="artHPVal">72</strong><span>高</span></div>
+
+        <label for="venHP">
+          小靜脈端流體壓力／血壓（venule-end fluid pressure, FP<sub>v</sub>）
+          <span class="hint">沿血管床下降後較低 → 利於重吸收</span>
+        </label>
+        <input type="range" id="venHP" min="5" max="55" value="22" step="1">
+        <div class="val-row"><span>低</span><strong id="venHPVal">22</strong><span>高</span></div>
+
+        <label for="plasmaOP">
+          血漿滲透壓／膠體滲透壓（plasma osmotic / oncotic pressure, OP<sub>p</sub>）
+          <span class="hint">主要來自血漿蛋白 · 簡化為沿微血管大致恆定</span>
+        </label>
+        <input type="range" id="plasmaOP" min="20" max="80" value="45" step="1">
+        <div class="val-row"><span>低</span><strong id="plasmaOPVal">45</strong><span>高</span></div>
+
+        <div class="opt-toggle">
+          <input type="checkbox" id="showInter" checked>
+          <label for="showInter">顯示組織液參數（interstitial fluid，選用）</label>
+        </div>
+
+        <div id="interControls">
+          <label for="interOP">
+            組織液滲透壓（interstitial OP, OP<sub>i</sub>）
+            <span class="hint">通常低於血漿（簡化）</span>
+          </label>
+          <input type="range" id="interOP" min="0" max="40" value="10" step="1">
+          <div class="val-row"><span>低</span><strong id="interOPVal">10</strong><span>高</span></div>
+
+          <label for="interHP">
+            組織液側流體壓力（interstitial fluid pressure, FP<sub>i</sub>）
+            <span class="hint">預設 ≈ 0（課程常用簡化）</span>
+          </label>
+          <input type="range" id="interHP" min="0" max="25" value="0" step="1">
+          <div class="val-row"><span>≈0</span><strong id="interHPVal">0</strong><span>較高</span></div>
+        </div>
+      </div>
+
+      <div id="ctrl-cell" class="hidden">
+        <label for="extSolute">
+          外界溶質濃度（external solute／如蔗糖溶液）
+          <span class="hint">↑ 外界滲透壓↑、水勢 ψ<sub>out</sub>↓</span>
+        </label>
+        <input type="range" id="extSolute" min="0" max="100" value="20" step="1">
+        <div class="val-row"><span>低（近純水）</span><strong id="extSoluteVal">20</strong><span>高（高滲）</span></div>
+
+        <label for="intSolute">
+          細胞內溶質濃度（internal solute／液泡與細胞質）
+          <span class="hint">影響細胞滲透壓與 ψ<sub>s</sub></span>
+        </label>
+        <input type="range" id="intSolute" min="10" max="90" value="40" step="1">
+        <div class="val-row"><span>低</span><strong id="intSoluteVal">40</strong><span>高</span></div>
+
+        <div id="ctrl-plant-extra">
+          <label for="maxTurgor">
+            細胞壁最大膨壓上限（max turgor / wall capacity）
+            <span class="hint">壓力勢 ψ<sub>p</sub> 上限（相對單位）</span>
+          </label>
+          <input type="range" id="maxTurgor" min="20" max="100" value="70" step="1">
+          <div class="val-row"><span>柔弱</span><strong id="maxTurgorVal">70</strong><span>堅韌</span></div>
+
+          <div class="plant-example" id="plantExampleBox">
+            <h3>課堂例子：薯仔薄片 × 蔗糖溶液（potato × sucrose）</h3>
+            <p>DSE／初中常用情境（<strong>相對單位</strong>，非真實 mol／dm³ 實驗數據）：薯仔細胞內溶質≈40。調校「外界溶質」模擬不同蔗糖濃度，觀察<strong>膨脹 → 萎軟 → 質壁分離</strong>。</p>
+            <div class="ex-btns">
+              <button type="button" class="ex-primary" data-plant-ex="potato-turgid">① 稀／近純水 → 膨脹</button>
+              <button type="button" data-plant-ex="potato-flaccid">② 近等滲蔗糖 → 萎軟</button>
+              <button type="button" data-plant-ex="potato-plasmo">③ 濃蔗糖 → 質壁分離</button>
+              <button type="button" data-plant-ex="potato-demo">載入完整示範設定</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="action" id="btnReset">重設（Reset）</button>
+        <button type="button" class="action secondary" id="btnPresetTypical">典型示意預設</button>
+      </div>
+    </section>
+
+    <section class="card cap-focus" aria-label="即時圖解">
+      <h2>即時圖解（Live diagram）</h2>
+      <div class="diagram-wrap" id="diagramWrap">
+        <svg id="diagramSvg" viewBox="0 0 500 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagTitle">
+          <title id="diagTitle">小動脈分支成微血管網再匯入小靜脈——組織液交換示意圖</title>
+        </svg>
+      </div>
+      <div class="readouts" id="readouts"></div>
+    </section>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>壓力比較圖（流體壓力 FP vs 滲透壓 OP）</h2>
+      <p style="margin:0 0 6px;font-size:.82rem;color:var(--muted);" id="graphCaption">說明用相對單位</p>
+      <div class="graph-wrap">
+        <canvas id="barCanvas" width="520" height="170" aria-label="壓力長條圖"></canvas>
+      </div>
+      <div class="legend" id="graphLegend">
+        <span class="hp">流體壓力 FP</span>
+        <span class="op">滲透壓 OP</span>
+        <span class="net">淨壓（FP效應−OP效應）</span>
+      </div>
+    </section>
+
+    <section class="card explain">
+      <h2>概念說明（Explanation）</h2>
+      <div id="explainPanel"></div>
+      <div class="questions" id="questionsPanel"></div>
+    </section>
+  </div>
+
+  <section class="teacher-notes card" aria-label="教師備註">
+    <h2>教師備註（Teacher notes）</h2>
+    <h3>如何開啟</h3>
+    <p>以瀏覽器直接開啟本單一 HTML 檔即可（無需安裝）。預設進入<strong>微血管（小動脈→小靜脈）</strong>主模式。列印前請先選好模式。</p>
+    <h3>主模式參數（流體力學簡化 + Starling）</h3>
+    <ul>
+      <li><strong>流體壓力／血壓 FP：</strong>血液作為流體沿血管床流動所產生的壓力（fluid pressure / hemodynamics 教育簡化）。小動脈端高、小靜脈端低，形成<strong>沿程壓力降（pressure drop）</strong>，推動濾過。</li>
+      <li><strong>滲透壓／膠體滲透壓 OP：</strong>血漿蛋白等使水傾向返回血管（重吸收）。簡化為沿微血管大致恆定，與流體壓力對照。</li>
+      <li><strong>淨壓（說明用）：</strong>淨濾過壓 ≈ (FP<sub>cap</sub> − FP<sub>i</sub>) − (OP<sub>p</sub> − OP<sub>i</sub>)；預設 FP<sub>i</sub>≈0。</li>
+      <li>正淨壓 → 濾過為主；負淨壓 → 重吸收為主。課本「血靜水壓」≈ 本頁血管流體壓力。</li>
+    </ul>
+    <h3>課堂提問建議</h3>
+    <ol>
+      <li>為甚麼小動脈端常以濾過為主，而小靜脈端常以重吸收為主？</li>
+      <li>若血漿蛋白質減少（OP<sub>p</sub> 下降），對組織液生成／水腫傾向有何影響？</li>
+      <li>本模擬的「相對單位」與課本示意數值應如何向學生說明其限制？</li>
+      <li>（延伸）植物細胞膨壓與微血管流體壓力在「推」水方面概念上有何異同？</li>
+      <li>（延伸）動物細胞無細胞壁，為何不能用「膨壓」解釋其抗脹破？</li>
+    </ol>
+    <h3>限制（Limitations）</h3>
+    <ul>
+      <li>血流動力學／流體壓力為教育簡化（線性沿程降壓）；略去黏度、湍流、脈搏與真實 mmHg 校準。</li>
+      <li>簡化 Starling；略去淋巴回流與複雜組織壓。</li>
+      <li>血漿 OP 沿管視為恆定；忽略時間動力學與主動運輸。</li>
+      <li>勿將模擬輸出當成真實實驗或臨床數據。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const DEFAULTS = {
+    capillary: { artHP: 72, venHP: 22, plasmaOP: 45, interOP: 10, interHP: 0 },
+    plant: { extSolute: 10, intSolute: 40, maxTurgor: 70 },
+    animal: { extSolute: 30, intSolute: 40 }
+  };
+
+  let mode = "capillary";
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    artHP: $("artHP"), venHP: $("venHP"), plasmaOP: $("plasmaOP"),
+    interOP: $("interOP"), interHP: $("interHP"), showInter: $("showInter"),
+    interControls: $("interControls"),
+    extSolute: $("extSolute"), intSolute: $("intSolute"), maxTurgor: $("maxTurgor"),
+    artHPVal: $("artHPVal"), venHPVal: $("venHPVal"), plasmaOPVal: $("plasmaOPVal"),
+    interOPVal: $("interOPVal"), interHPVal: $("interHPVal"),
+    extSoluteVal: $("extSoluteVal"), intSoluteVal: $("intSoluteVal"), maxTurgorVal: $("maxTurgorVal"),
+    ctrlCap: $("ctrl-cap"), ctrlCell: $("ctrl-cell"), ctrlPlantExtra: $("ctrl-plant-extra"),
+    ctrlHint: $("ctrlHint"),
+    svg: $("diagramSvg"), readouts: $("readouts"),
+    explain: $("explainPanel"), questions: $("questionsPanel"),
+    canvas: $("barCanvas"), graphCaption: $("graphCaption"), graphLegend: $("graphLegend")
+  };
+
+  function n(el) { return Number(el.value); }
+
+  function syncLabels() {
+    els.artHPVal.textContent = els.artHP.value;
+    els.venHPVal.textContent = els.venHP.value;
+    els.plasmaOPVal.textContent = els.plasmaOP.value;
+    els.interOPVal.textContent = els.interOP.value;
+    els.interHPVal.textContent = els.interHP.value;
+    els.extSoluteVal.textContent = els.extSolute.value;
+    els.intSoluteVal.textContent = els.intSolute.value;
+    els.maxTurgorVal.textContent = els.maxTurgor.value;
+  }
+
+  /**
+   * Simplified Starling (illustrative relative units):
+   * NFP = (FP_cap - FP_i) - (OP_p - OP_i)  // FP = fluid pressure along vessel
+   * Positive → net filtration out; negative → net reabsorption in.
+   */
+  function computeCapillary() {
+    const HPa = n(els.artHP);
+    const HPv = n(els.venHP);
+    const OPp = n(els.plasmaOP);
+    const OPi = n(els.interOP);
+    const HPi = n(els.interHP);
+
+    const effectiveOP = OPp - OPi;
+    const netArt = (HPa - HPi) - effectiveOP;
+    const netVen = (HPv - HPi) - effectiveOP;
+
+    function classify(net) {
+      if (net > 4) return { label: "淨濾過（net filtration）", cls: "filtration", dir: "液體→組織液" };
+      if (net < -4) return { label: "淨重吸收（net reabsorption）", cls: "reabsorb", dir: "液體←組織液" };
+      return { label: "接近平衡（near balance）", cls: "balance", dir: "淨移動≈0" };
+    }
+
+    const art = classify(netArt);
+    const ven = classify(netVen);
+
+    // Relative fluid flux magnitudes for balance bar (ordinal, not real volume)
+    const outMag = Math.max(0, netArt) + Math.max(0, netVen);
+    const inMag = Math.max(0, -netArt) + Math.max(0, -netVen);
+    const total = outMag + inMag || 1;
+
+    return {
+      HPa, HPv, OPp, OPi, HPi, effectiveOP, netArt, netVen, art, ven,
+      outMag, inMag, outPct: (outMag / total) * 100, inPct: (inMag / total) * 100,
+      fluidBalance: outMag - inMag
+    };
+  }
+
+  function computePlant() {
+    const extS = n(els.extSolute);
+    const intS = n(els.intSolute);
+    const maxTP = n(els.maxTurgor);
+    const opInt = intS, opExt = extS;
+    // Educational: ψs more negative when solute high; ψ ≈ ψs + ψp
+    const psiS_in = -intS, psiS_out = -extS;
+    let tp = Math.max(0, Math.min(maxTP, intS - extS));
+    let state, stateClass, netLabel, netDir, shrink = 0, swell = 0;
+    const diff = extS - intS; // >0 hypertonic outside
+
+    if (diff > 12) {
+      // Hypertonic sucrose etc. → plasmolysis
+      state = "質壁分離（plasmolysed）";
+      stateClass = "plasmolysed";
+      netLabel = "外界水勢較低 → 水份淨流出；原生質體離開細胞壁";
+      netDir = "→ 出";
+      tp = 0;
+      shrink = Math.min(1, (diff - 12) / 50 + 0.25);
+    } else if (diff >= -6 && diff <= 12) {
+      // Near-isotonic → flaccid (incipient plasmolysis zone for teaching)
+      state = "萎軟（flaccid）";
+      stateClass = "flaccid";
+      tp = Math.max(0, Math.min(maxTP * 0.25, intS - extS));
+      if (diff > 4) {
+        netLabel = "接近質壁分離起始；膨壓接近零";
+        netDir = "→ 出（輕微）";
+        shrink = Math.min(0.35, diff / 40);
+      } else {
+        netLabel = "淨水移動接近零；細胞不脹滿";
+        netDir = "≈ 平衡";
+      }
+    } else {
+      // Hypotonic outside → turgid
+      state = "膨脹／脹滿（turgid）";
+      stateClass = "turgid";
+      swell = Math.min(1, tp / Math.max(1, maxTP));
+      if (tp >= maxTP - 2) {
+        netLabel = "膨壓（ψ<sub>p</sub>）升高，阻止進一步大量吸水";
+        netDir = "≈ 平衡（有膨壓）";
+      } else {
+        netLabel = "水份淨流入，建立膨壓";
+        netDir = "← 入";
+      }
+    }
+    const psi_in = psiS_in + tp;
+    const psi_out = psiS_out;
+    return {
+      opInt, opExt, tp, maxTP, psi_in, psi_out, psiS_in, psiS_out,
+      state, stateClass, netLabel, netDir, shrink, swell, extS, intS, diff
+    };
+  }
+
+  function computeAnimal() {
+    const extS = n(els.extSolute), intS = n(els.intSolute);
+    const diff = intS - extS;
+    let state, stateClass, netLabel, netDir, radiusScale = 1;
+    if (diff > 18) {
+      state = "溶血（haemolysis）風險"; stateClass = "haemolysis";
+      netLabel = "水份大量淨流入（低滲）"; netDir = "← 入（危險）";
+      radiusScale = 1.25 + Math.min(0.3, (diff - 18) / 80);
+    } else if (diff > 5) {
+      state = "膨脹（swelling）"; stateClass = "normal";
+      netLabel = "水份淨流入"; netDir = "← 入"; radiusScale = 1.05 + (diff - 5) / 40;
+    } else if (diff >= -5) {
+      state = "正常（近等滲 isotonic）"; stateClass = "normal";
+      netLabel = "淨水移動≈0"; netDir = "≈ 平衡";
+    } else if (diff >= -20) {
+      state = "皺縮（crenation）"; stateClass = "crenation";
+      netLabel = "水份淨流出（高滲）"; netDir = "→ 出"; radiusScale = 0.85;
+    } else {
+      state = "嚴重皺縮（crenation）"; stateClass = "crenation";
+      netLabel = "水份大量淨流出"; netDir = "→ 出"; radiusScale = 0.7;
+    }
+    return { opInt: intS, opExt: extS, tp: 0, state, stateClass, netLabel, netDir, radiusScale, extS, intS };
+  }
+
+  function drawCapillary(c) {
+    const svg = els.svg;
+    const showI = els.showInter.checked;
+
+    /*
+     * STRICT bands (viewBox 500×700), ≥32px clear gaps, no layer stacking:
+     * A  16–108   title + chips only
+     * — gap —
+     * B 140–168   blood-flow arrow only
+     * — gap —
+     * C 200–292   title; FP labels above bar; bar; ΔFP alone ≥24px below
+     * — gap —
+     * D 307–350   「沿程取樣」above + FP≈ values in opaque row (no vessels)
+     * — gap —
+     * E 382–555   vessels + short flux arrows ONLY (clamped)
+     * — gap —
+     * F 587–612   「微血管網」pill
+     * — gap —
+     * G 644–688   filtration / reabsorption + formula
+     */
+    const BAND_E_TOP = 382;
+    const BAND_E_BOT = 555;
+    const y0 = 470;
+    const ax = 82;
+    const vx = 418;
+    // Vessel y only inside Band E; leave headroom under top of band for vessel labels
+    const branches = [
+      { y: 420, artX: 162, venX: 338 },
+      { y: 445, artX: 154, venX: 346 },
+      { y: 470, artX: 148, venX: 352 },
+      { y: 495, artX: 154, venX: 346 },
+      { y: 520, artX: 162, venX: 338 }
+    ];
+
+    function fluxOnBranch(x, y, net) {
+      // 壓力變化 = 箭嘴大小：|淨壓| ↑ → 箭長／線粗 ↑；≈0 隱藏；夾在 Band E 內
+      const abs = Math.abs(net);
+      if (abs < 3) return ""; // near balance → hide
+      // length: min 8 (readable), max 34; scale ≈ 0.45 × |net|
+      let mag = Math.min(34, Math.max(8, abs * 0.45));
+      // stroke grows mildly with pressure
+      const sw = Math.min(3.6, Math.max(1.5, 1.3 + abs * 0.04));
+      // room to band edges (keep layout)
+      const maxUp = Math.max(0, y - (BAND_E_TOP + 10));
+      const maxDn = Math.max(0, (BAND_E_BOT - 10) - y);
+      if (net > 0) {
+        // filtration (out of vessel): arteriole-side when net>0
+        if (y < y0) {
+          mag = Math.min(mag, maxUp);
+          if (mag < 6) return "";
+          const y2 = y - 2 - mag;
+          return `<line x1="${x}" y1="${y - 2}" x2="${x}" y2="${y2}" stroke="#1565c0" stroke-width="${sw.toFixed(2)}" marker-end="url(#arrowBlueUp)"/>`;
+        }
+        mag = Math.min(mag, maxDn);
+        if (mag < 6) return "";
+        const y2 = y + 2 + mag;
+        return `<line x1="${x}" y1="${y + 2}" x2="${x}" y2="${y2}" stroke="#1565c0" stroke-width="${sw.toFixed(2)}" marker-end="url(#arrowBlue)"/>`;
+      }
+      if (net < 0) {
+        // reabsorption (into vessel): venule-side when net<0
+        if (y < y0) {
+          mag = Math.min(mag, maxUp);
+          if (mag < 6) return "";
+          const y1 = y - 2 - mag;
+          return `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y - 4}" stroke="#2e7d32" stroke-width="${sw.toFixed(2)}" marker-end="url(#arrowGreen)"/>`;
+        }
+        mag = Math.min(mag, maxDn);
+        if (mag < 6) return "";
+        const y1 = y + 2 + mag;
+        return `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y + 4}" stroke="#2e7d32" stroke-width="${sw.toFixed(2)}" marker-end="url(#arrowGreenDown)"/>`;
+      }
+      return "";
+    }
+
+    let capPaths = "", fluxArts = "", fluxVens = "", crossLinks = "";
+    branches.forEach((b, i) => {
+      const d = `M ${ax} ${y0}
+                 C ${ax + 34} ${y0}, ${b.artX - 14} ${b.y}, ${b.artX} ${b.y}
+                 L ${b.venX} ${b.y}
+                 C ${b.venX + 14} ${b.y}, ${vx - 34} ${y0}, ${vx} ${y0}`;
+      const strokeW = 2.2 + (i === 2 ? 0.5 : 0);
+      capPaths += `<path d="${d}" fill="none" stroke="#e53935" stroke-width="${strokeW}" stroke-linecap="round" opacity="0.9"/>`;
+      if (i < branches.length - 1) {
+        const n = branches[i + 1];
+        const cx1 = 205 + (i % 2) * 16;
+        const cx2 = 295 - (i % 2) * 14;
+        crossLinks += `<path d="M ${cx1} ${b.y} Q ${cx1 + 5} ${(b.y + n.y) / 2}, ${cx1} ${n.y}" fill="none" stroke="#ef5350" stroke-width="1.3" opacity="0.6"/>`;
+        crossLinks += `<path d="M ${cx2} ${b.y} Q ${cx2 - 5} ${(b.y + n.y) / 2}, ${cx2} ${n.y}" fill="none" stroke="#ef5350" stroke-width="1.3" opacity="0.6"/>`;
+      }
+      fluxArts += fluxOnBranch(b.artX + 8, b.y, c.netArt);
+      fluxVens += fluxOnBranch(b.venX - 8, b.y, c.netVen);
+    });
+
+    const fpArtMid = (c.HPa * 0.85 + c.HPv * 0.15).toFixed(0);
+    const fpMid = ((c.HPa + c.HPv) / 2).toFixed(0);
+    const fpVenMid = (c.HPa * 0.15 + c.HPv * 0.85).toFixed(0);
+    const dFP = (c.HPa - c.HPv).toFixed(0);
+
+    function sidePanel(x, net, which) {
+      let titleZh, titleEn, fill, stroke;
+      if (net > 4) {
+        titleZh = "濾過"; titleEn = "filtration";
+        fill = "#e3f2fd"; stroke = "#1565c0";
+      } else if (net < -4) {
+        titleZh = "重吸收"; titleEn = "reabsorption";
+        fill = "#e8f5e9"; stroke = "#2e7d32";
+      } else {
+        titleZh = "接近平衡"; titleEn = "near balance";
+        fill = "#f3f4f6"; stroke = "#6b7280";
+      }
+      const side = which === "art" ? "小動脈側" : "小靜脈側";
+      const netStr = (net >= 0 ? "+" : "") + net.toFixed(0);
+      return `
+        <rect x="${x}" y="644" width="210" height="48" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+        <text x="${x + 105}" y="660" text-anchor="middle" font-size="13" font-weight="700" fill="${stroke}">${titleZh}（${side}）</text>
+        <text x="${x + 105}" y="674" text-anchor="middle" font-size="10" fill="${stroke}">${titleEn}</text>
+        <text x="${x + 105}" y="686" text-anchor="middle" font-size="12" font-weight="700" fill="#1a2332">淨壓 ${netStr}</text>`;
+    }
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrowBlue" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#1565c0"/>
+        </marker>
+        <marker id="arrowBlueUp" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#1565c0"/>
+        </marker>
+        <marker id="arrowGreen" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#2e7d32"/>
+        </marker>
+        <marker id="arrowGreenDown" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#2e7d32"/>
+        </marker>
+        <marker id="arrowFlow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#b71c1c"/>
+        </marker>
+        <linearGradient id="artGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#b71c1c"/>
+          <stop offset="100%" stop-color="#e53935"/>
+        </linearGradient>
+        <linearGradient id="venGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ef9a9a"/>
+          <stop offset="100%" stop-color="#e57373"/>
+        </linearGradient>
+        <linearGradient id="fpDropGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#b71c1c"/>
+          <stop offset="50%" stop-color="#ef5350"/>
+          <stop offset="100%" stop-color="#ffcdd2"/>
+        </linearGradient>
+      </defs>
+
+      <rect width="500" height="720" fill="#faf6f1"/>
+
+      <!-- ===== BAND A (16–108): title + chips ===== -->
+      <text x="20" y="28" font-size="14" font-weight="700" fill="#6b2a12">血管分支床與流體壓力降</text>
+      <text x="20" y="46" font-size="11" fill="#5a6a7a">arteriole → capillary → venule（相對單位）${showI ? `　｜　OPᵢ=${c.OPi} FPᵢ=${c.HPi}` : "　｜　FPᵢ≈0"}</text>
+
+      <rect x="24" y="58" width="136" height="42" rx="8" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+      <text x="92" y="76" text-anchor="middle" font-size="10" fill="#b71c1c">小動脈端流體壓力</text>
+      <text x="92" y="92" text-anchor="middle" font-size="15" font-weight="700" fill="#b71c1c">FPₐ = ${c.HPa}</text>
+
+      <rect x="182" y="58" width="136" height="42" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="250" y="76" text-anchor="middle" font-size="10" fill="#0d47a1">血漿滲透壓</text>
+      <text x="250" y="92" text-anchor="middle" font-size="15" font-weight="700" fill="#0d47a1">OPₚ = ${c.OPp}</text>
+
+      <rect x="340" y="58" width="136" height="42" rx="8" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+      <text x="408" y="76" text-anchor="middle" font-size="10" fill="#b71c1c">小靜脈端流體壓力</text>
+      <text x="408" y="92" text-anchor="middle" font-size="15" font-weight="700" fill="#b71c1c">FPᵥ = ${c.HPv}</text>
+
+      <!-- ===== BAND B (140–168): blood flow alone ===== -->
+      <text x="250" y="148" text-anchor="middle" font-size="11" font-weight="600" fill="#b71c1c">血流方向　blood flow →</text>
+      <line x1="80" y1="158" x2="420" y2="158" stroke="#b71c1c" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#arrowFlow)"/>
+
+      <!-- ===== BAND C: title → labels above bar → bar → gap≥24px → ΔFP alone ===== -->
+      <!-- labels y=228; bar y=236–252; ΔFP y=280 (≥24px below labels & below bar) -->
+      <rect x="36" y="200" width="428" height="92" rx="10" fill="#fff8f0" stroke="#e8b88a" stroke-width="1.2"/>
+      <text x="250" y="216" text-anchor="middle" font-size="12" font-weight="700" fill="#6b2a12">沿血管床流體壓力降（fluid pressure drop）</text>
+      <text x="80" y="232" text-anchor="start" font-size="11" font-weight="700" fill="#b71c1c">FPₐ ${c.HPa}</text>
+      <text x="250" y="232" text-anchor="middle" font-size="11" font-weight="600" fill="#6b2a12">中段 ≈ ${fpMid}</text>
+      <text x="420" y="232" text-anchor="end" font-size="11" font-weight="700" fill="#c62828">FPᵥ ${c.HPv}</text>
+      <rect x="80" y="238" width="340" height="16" rx="4" fill="url(#fpDropGrad)" stroke="#8b0000" stroke-width="0.8"/>
+      <text x="250" y="280" text-anchor="middle" font-size="13" font-weight="700" fill="#5a6a7a">ΔFP = ${dFP}（相對單位）</text>
+
+      <!-- ===== BAND D (307–350): sample label ABOVE, values BELOW; opaque; no vessels ===== -->
+      <text x="250" y="316" text-anchor="middle" font-size="10" fill="#9ca3af">沿程取樣（sampled FP）</text>
+      <rect x="60" y="324" width="380" height="26" rx="8" fill="#ffffff" stroke="#c5d0dc" stroke-width="1.5"/>
+      <text x="125" y="342" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">FP≈${fpArtMid}</text>
+      <text x="250" y="342" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">FP≈${fpMid}</text>
+      <text x="375" y="342" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">FP≈${fpVenMid}</text>
+
+      <!-- ===== BAND E (382–555): vessels ONLY ===== -->
+      <rect x="16" y="382" width="468" height="173" rx="10" fill="#eaf4fb" stroke="#90caf9" stroke-width="1"/>
+
+      <!-- Labels ABOVE trunks, inside band, pad ≥16 from edges -->
+      <text x="50" y="400" text-anchor="middle" font-size="12" font-weight="700" fill="#7f0000">小動脈</text>
+      <text x="50" y="414" text-anchor="middle" font-size="9" fill="#7f0000">arteriole</text>
+      <text x="450" y="400" text-anchor="middle" font-size="12" font-weight="700" fill="#c62828">小靜脈</text>
+      <text x="450" y="414" text-anchor="middle" font-size="9" fill="#c62828">venule</text>
+
+      <path d="M 20 ${y0 - 15} L ${ax} ${y0 - 13} L ${ax} ${y0 + 13} L 20 ${y0 + 15} Z"
+        fill="url(#artGrad)" stroke="#7f0000" stroke-width="1.5"/>
+      <circle cx="${ax}" cy="${y0}" r="10" fill="#b71c1c" stroke="#7f0000" stroke-width="1.5"/>
+
+      <path d="M ${vx} ${y0 - 11} L 480 ${y0 - 12} L 480 ${y0 + 12} L ${vx} ${y0 + 11} Z"
+        fill="url(#venGrad)" stroke="#c62828" stroke-width="1.5"/>
+      <circle cx="${vx}" cy="${y0}" r="8" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+
+      <g id="capillaryNetwork">${capPaths}${crossLinks}</g>
+      <g id="fluxOnlyInBandE">${fluxArts}${fluxVens}</g>
+
+      <!-- ===== BAND F (587–612): network pill below mesh ===== -->
+      <rect x="150" y="587" width="200" height="25" rx="8" fill="#ffffff" stroke="#ef9a9a" stroke-width="1.2"/>
+      <text x="250" y="604" text-anchor="middle" font-size="12" font-weight="700" fill="#7f1d1d">微血管網　capillary network</text>
+
+      <!-- ===== BAND G (644–688): panels + formula ===== -->
+      ${sidePanel(28, c.netArt, "art")}
+      ${sidePanel(262, c.netVen, "ven")}
+      <text x="250" y="708" text-anchor="middle" font-size="10" fill="#6b7280">淨壓 ≈ (FP − FPᵢ) − (OPₚ − OPᵢ)　｜　藍＝濾過　綠＝重吸收　｜　箭嘴大小 ∝ |淨壓|</text>
+    `;
+  }
+
+  function drawPlant(p) {
+    const svg = els.svg;
+    const cx = 250, cy = 280;
+    const wallW = 170, wallH = 140;
+    const protoShrink = p.shrink * 32;
+    const vacR = 58 * (1 - p.shrink * 0.55) * (0.82 + p.swell * 0.22);
+
+    function stageChip(label, cls, active) {
+      const fills = { turgid: "#d1fae5", flaccid: "#fef3c7", plasmolysed: "#fee2e2" };
+      const strokes = { turgid: "#065f46", flaccid: "#92400e", plasmolysed: "#991b1b" };
+      const fill = fills[cls] || "#eee";
+      const stroke = active ? strokes[cls] : "#c5d0dc";
+      const fw = active ? "700" : "500";
+      const op = active ? "1" : "0.55";
+      return { fill, stroke, fw, op, label };
+    }
+    const stages = [
+      stageChip("① 膨脹 turgid", "turgid", p.stateClass === "turgid"),
+      stageChip("② 萎軟 flaccid", "flaccid", p.stateClass === "flaccid"),
+      stageChip("③ 質壁分離 plasmolysed", "plasmolysed", p.stateClass === "plasmolysed")
+    ];
+
+    let waterArrows = "";
+    if (p.netDir.indexOf("入") >= 0) {
+      waterArrows = `<g fill="#1565c0" font-size="12" font-weight="700">
+        <text x="70" y="${cy}">H₂O</text>
+        <polygon points="105,${cy} 130,${cy-11} 130,${cy+11}"/>
+        <text x="400" y="${cy}">H₂O</text>
+        <polygon points="395,${cy} 370,${cy-11} 370,${cy+11}"/>
+      </g>`;
+    } else if (p.netDir.indexOf("出") >= 0) {
+      waterArrows = `<g fill="#1565c0" font-size="12" font-weight="700">
+        <text x="55" y="${cy}">H₂O</text>
+        <polygon points="130,${cy} 105,${cy-11} 105,${cy+11}"/>
+        <text x="415" y="${cy}">H₂O</text>
+        <polygon points="370,${cy} 395,${cy-11} 395,${cy+11}"/>
+      </g>`;
+    }
+
+    const wallX = cx - wallW / 2, wallY = cy - wallH / 2;
+
+    svg.innerHTML = `
+      <rect width="500" height="720" fill="#eef7f0"/>
+      <text x="20" y="28" font-size="15" font-weight="700" fill="#1a5c2e">植物細胞例子：薯仔細胞 × 蔗糖溶液</text>
+      <text x="20" y="48" font-size="11" fill="#5a6a7a">potato cell × sucrose solution　｜　ψ ≈ ψ<sub>s</sub> + ψ<sub>p</sub>（相對單位）</text>
+
+      <!-- Stage strip -->
+      <rect x="20" y="60" width="460" height="44" rx="8" fill="#fff" stroke="#b7e0c2"/>
+      <rect x="28" y="68" width="140" height="28" rx="6" fill="${stages[0].fill}" stroke="${stages[0].stroke}" stroke-width="${p.stateClass==="turgid"?2:1}" opacity="${stages[0].op}"/>
+      <text x="98" y="87" text-anchor="middle" font-size="11" font-weight="${stages[0].fw}" fill="#065f46">① 膨脹 turgid</text>
+      <rect x="180" y="68" width="140" height="28" rx="6" fill="${stages[1].fill}" stroke="${stages[1].stroke}" stroke-width="${p.stateClass==="flaccid"?2:1}" opacity="${stages[1].op}"/>
+      <text x="250" y="87" text-anchor="middle" font-size="11" font-weight="${stages[1].fw}" fill="#92400e">② 萎軟 flaccid</text>
+      <rect x="332" y="68" width="140" height="28" rx="6" fill="${stages[2].fill}" stroke="${stages[2].stroke}" stroke-width="${p.stateClass==="plasmolysed"?2:1}" opacity="${stages[2].op}"/>
+      <text x="402" y="87" text-anchor="middle" font-size="10" font-weight="${stages[2].fw}" fill="#991b1b">③ 質壁分離</text>
+
+      <!-- External solution -->
+      <rect x="40" y="120" width="420" height="280" rx="12" fill="#d4e8f7" stroke="#7ba3c4" stroke-width="1.5"/>
+      <text x="56" y="142" font-size="12" font-weight="600" fill="#1e4d7b">外界：蔗糖溶液（sucrose）溶質相對濃度 = ${p.extS}</text>
+      <text x="56" y="160" font-size="11" fill="#3b6ea5">外界滲透壓 OP<sub>out</sub>≈${p.opExt}　｜　ψ<sub>out</sub>≈ψ<sub>s,out</sub>=${p.psi_out.toFixed(0)}（ψ<sub>p,out</sub>≈0）</text>
+
+      <!-- Cell wall -->
+      <rect x="${wallX}" y="${wallY}" width="${wallW}" height="${wallH}" rx="20"
+        fill="none" stroke="#5d4037" stroke-width="7"/>
+      <rect x="${wallX + 4}" y="${wallY + 4}" width="${wallW - 8}" height="${wallH - 8}" rx="16"
+        fill="#c8e6c9" stroke="#2d8a4e" stroke-width="2"/>
+
+      <!-- Protoplast / membrane -->
+      <ellipse cx="${cx}" cy="${cy}"
+        rx="${wallW/2 - 10 - protoShrink}" ry="${wallH/2 - 10 - protoShrink * 0.75}"
+        fill="#a5d6a7" stroke="#1b5e20" stroke-width="2.5"/>
+
+      <!-- Vacuole -->
+      <ellipse cx="${cx}" cy="${cy}" rx="${vacR}" ry="${vacR * 0.72}"
+        fill="#81d4fa" stroke="#0277bd" stroke-width="2" opacity="0.92"/>
+      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="12" font-weight="700" fill="#01579b">液泡 vacuole</text>
+
+      <!-- Labels clear of vessels -->
+      <text x="${wallX + wallW + 8}" y="${wallY + 16}" font-size="11" font-weight="700" fill="#5d4037">細胞壁</text>
+      <text x="${wallX + wallW + 8}" y="${wallY + 30}" font-size="10" fill="#5d4037">cell wall</text>
+      <text x="${wallX - 8}" y="${wallY + wallH - 8}" text-anchor="end" font-size="11" font-weight="700" fill="#1b5e20">細胞膜</text>
+      <text x="${wallX - 8}" y="${wallY + wallH + 6}" text-anchor="end" font-size="10" fill="#1b5e20">membrane</text>
+      <text x="${cx}" y="${wallY - 10}" text-anchor="middle" font-size="11" fill="#1a5c2e">細胞內溶質 = ${p.intS}　OP<sub>in</sub>≈${p.opInt}</text>
+
+      ${waterArrows}
+
+      <!-- Water potential / turgor panel below cell (no overlap) -->
+      <rect x="40" y="420" width="420" height="100" rx="10" fill="#fff" stroke="#b7e0c2"/>
+      <text x="56" y="442" font-size="12" font-weight="700" fill="#1a5c2e">水勢與膨壓（相對單位）</text>
+      <text x="56" y="464" font-size="12" fill="#374151">ψ<sub>s,in</sub> = ${p.psiS_in.toFixed(0)}　｜　膨壓 ψ<sub>p</sub>／TP = ${p.tp.toFixed(0)}（上限 ${p.maxTP}）</text>
+      <text x="56" y="484" font-size="12" fill="#374151">ψ<sub>in</sub> ≈ ψ<sub>s</sub> + ψ<sub>p</sub> = ${p.psi_in.toFixed(0)}　｜　ψ<sub>out</sub> ≈ ${p.psi_out.toFixed(0)}</text>
+      <text x="56" y="506" font-size="12" font-weight="600" fill="#0d4f4f">淨水：${p.netDir}　—　${p.netLabel.replace(/<[^>]+>/g, "")}</text>
+
+      <!-- Worked example box -->
+      <rect x="40" y="536" width="420" height="120" rx="10" fill="#f0faf3" stroke="#8fbf9a"/>
+      <text x="56" y="558" font-size="12" font-weight="700" fill="#1a5c2e">課堂示範數值（說明用相對單位）</text>
+      <text x="56" y="578" font-size="11" fill="#3d5a45">薯仔細胞內溶質固定≈40。外界蔗糖：稀≈10→膨脹；近等滲≈40→萎軟；濃≈75→質壁分離。</text>
+      <text x="56" y="598" font-size="11" fill="#3d5a45">現況：外界 ${p.extS}　vs　細胞內 ${p.intS}　→　<strong>${p.state}</strong></text>
+      <text x="56" y="620" font-size="11" fill="#5a6a7a">勿把相對單位當成真實實驗 mol／dm³ 或 kPa。</text>
+      <text x="250" y="644" text-anchor="middle" font-size="14" font-weight="700" fill="#0d4f4f">${p.state}</text>
+    `;
+  }
+
+  function drawAnimal(a) {
+    const svg = els.svg;
+    const cx = 220, cy = 175;
+    const r = 62 * a.radiusScale;
+    let cellPath;
+    if (a.stateClass === "crenation") {
+      const pts = [];
+      for (let i = 0; i < 14; i++) {
+        const ang = (i / 14) * Math.PI * 2 - Math.PI / 2;
+        const rr = r * (i % 2 === 0 ? 1 : 0.72);
+        pts.push(`${cx + rr * Math.cos(ang)},${cy + rr * Math.sin(ang)}`);
+      }
+      cellPath = `<polygon points="${pts.join(" ")}" fill="#ef9a9a" stroke="#b71c1c" stroke-width="2.5"/>`;
+    } else if (a.stateClass === "haemolysis") {
+      cellPath = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffcdd2" stroke="#c62828" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <text x="${cx}" y="${cy - r - 12}" text-anchor="middle" font-size="11" fill="#b71c1c" font-weight="700">膜可能破裂</text>`;
+    } else {
+      cellPath = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#90caf9" stroke="#1565c0" stroke-width="2.5"/>`;
+    }
+    let waterArrows = "";
+    if (a.netDir.indexOf("入") >= 0) {
+      waterArrows = `<g fill="#1565c0" font-size="12" font-weight="700">
+        <text x="55" y="${cy}">H₂O</text><polygon points="95,${cy} 125,${cy-12} 125,${cy+12}"/>
+        <text x="345" y="${cy}">H₂O</text><polygon points="340,${cy} 310,${cy-12} 310,${cy+12}"/></g>`;
+    } else if (a.netDir.indexOf("出") >= 0) {
+      waterArrows = `<g fill="#1565c0" font-size="12" font-weight="700">
+        <text x="45" y="${cy}">H₂O</text><polygon points="125,${cy} 95,${cy-12} 95,${cy+12}"/>
+        <text x="360" y="${cy}">H₂O</text><polygon points="310,${cy} 340,${cy-12} 340,${cy+12}"/></g>`;
+    }
+    svg.innerHTML = `
+      <rect width="500" height="720" fill="#eef3f9"/>
+      <text x="14" y="22" font-size="13" font-weight="700" fill="#1e3a5f">動物細胞（延伸比較，如紅血球）</text>
+      <text x="14" y="40" font-size="11" fill="#5a6a7a">無細胞壁 → 無典型膨壓</text>
+      <rect x="30" y="55" width="380" height="250" rx="8" fill="#dce9f5" stroke="#90a4ae"/>
+      <text x="40" y="74" font-size="10" fill="#3b6ea5">外界 ${a.extS}　｜　細胞內 ${a.intS}</text>
+      ${cellPath}
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="#0d47a1">細胞膜</text>
+      ${waterArrows}
+      <text x="220" y="320" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">${a.state}</text>
+    `;
+  }
+
+  function renderReadoutsCap(c) {
+    const balNote = c.fluidBalance > 8
+      ? "示意：淨輸出偏多（組織液生成傾向↑）"
+      : c.fluidBalance < -8
+        ? "示意：淨回收偏多"
+        : "示意：兩端出／入大致相抵（略去淋巴）";
+    els.readouts.innerHTML = `
+      <div class="readout end-art">
+        <div class="label">小動脈端（arteriole end）</div>
+        <div class="value">FPₐ ${c.HPa}　−　有效 OP ${c.effectiveOP.toFixed(0)}</div>
+        <div style="margin-top:4px">淨壓 <strong>${c.netArt >= 0 ? "+" : ""}${c.netArt.toFixed(0)}</strong>
+          <span class="badge ${c.art.cls}" style="margin-left:6px">${c.art.label}</span></div>
+        <div style="font-size:.78rem;color:#5a6a7a;margin-top:2px">${c.art.dir}</div>
+      </div>
+      <div class="readout end-ven">
+        <div class="label">小靜脈端（venule end）</div>
+        <div class="value">FPᵥ ${c.HPv}　−　有效 OP ${c.effectiveOP.toFixed(0)}</div>
+        <div style="margin-top:4px">淨壓 <strong>${c.netVen >= 0 ? "+" : ""}${c.netVen.toFixed(0)}</strong>
+          <span class="badge ${c.ven.cls}" style="margin-left:6px">${c.ven.label}</span></div>
+        <div style="font-size:.78rem;color:#5a6a7a;margin-top:2px">${c.ven.dir}</div>
+      </div>
+      <div class="readout span2">
+        <div class="label">液體出／入示意平衡（相對，非真實體積）</div>
+        <div class="balance-bar" title="藍＝濾過傾向　綠＝重吸收傾向">
+          <div class="out" style="width:${c.outPct}%"></div>
+          <div class="in" style="width:${c.inPct}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-top:4px;color:#5a6a7a">
+          <span>濾過傾向 ${c.outPct.toFixed(0)}%</span>
+          <span>重吸收傾向 ${c.inPct.toFixed(0)}%</span>
+        </div>
+        <div style="font-size:.82rem;margin-top:4px">${balNote}</div>
+        <div class="formula-box">
+          流體力學簡化：沿床壓力由 FP<sub>a</sub> 降至 FP<sub>v</sub>（ΔFP = ${(c.HPa - c.HPv).toFixed(0)}）<br>
+          淨濾過壓 ≈ (FP<sub>cap</sub> − FP<sub>i</sub>) − (OP<sub>p</sub> − OP<sub>i</sub>)<br>
+          有效滲透壓差 = OP<sub>p</sub> − OP<sub>i</sub> = ${c.OPp} − ${c.OPi} = <strong>${c.effectiveOP.toFixed(0)}</strong>（相對單位）
+        </div>
+      </div>`;
+  }
+
+  function renderReadoutsPlant(p) {
+    els.readouts.innerHTML = `
+      <div class="readout"><div class="label">細胞內滲透壓 OP（相對）</div><div class="value">${p.opInt}</div></div>
+      <div class="readout"><div class="label">外界滲透壓 OP（相對）</div><div class="value">${p.opExt}</div></div>
+      <div class="readout"><div class="label">膨壓 TP／ψ<sub>p</sub>（相對）</div><div class="value">${p.tp.toFixed(0)} / ${p.maxTP}</div></div>
+      <div class="readout"><div class="label">淨水移動</div><div class="value">${p.netDir}</div></div>
+      <div class="readout span2"><div class="label">狀態（turgid → flaccid → plasmolysis）</div>
+        <div class="value"><span class="badge ${p.stateClass}">${p.state}</span></div>
+        <div style="font-size:.82rem;color:#5a6a7a;margin-top:4px">${p.netLabel}</div>
+        <div class="formula-box" style="margin-top:8px">
+          ψ<sub>in</sub> ≈ ψ<sub>s,in</sub> + ψ<sub>p</sub> = ${p.psiS_in.toFixed(0)} + ${p.tp.toFixed(0)} = <strong>${p.psi_in.toFixed(0)}</strong><br>
+          ψ<sub>out</sub> ≈ ψ<sub>s,out</sub> = <strong>${p.psi_out.toFixed(0)}</strong>（相對單位）<br>
+          水由高水勢 → 低水勢　｜　薯仔×蔗糖課堂例可按左欄按鈕載入
+        </div>
+      </div>`;
+  }
+
+  function renderReadoutsAnimal(a) {
+    els.readouts.innerHTML = `
+      <div class="readout"><div class="label">細胞內 OP（相對）</div><div class="value">${a.opInt}</div></div>
+      <div class="readout"><div class="label">外界 OP（相對）</div><div class="value">${a.opExt}</div></div>
+      <div class="readout"><div class="label">膨壓（細胞壁）</div><div class="value">0（無）</div></div>
+      <div class="readout"><div class="label">淨水移動</div><div class="value">${a.netDir}</div></div>
+      <div class="readout span2"><div class="label">狀態</div><div class="value"><span class="badge ${a.stateClass}">${a.state}</span></div>
+        <div style="font-size:.82rem;color:#5a6a7a;margin-top:4px">${a.netLabel}</div></div>`;
+  }
+
+  function drawBars(labels, series) {
+    const canvas = els.canvas;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 520;
+    const cssH = 170;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    const pad = { t: 18, r: 14, b: 38, l: 38 };
+    const plotW = cssW - pad.l - pad.r;
+    const plotH = cssH - pad.t - pad.b;
+    const allVals = series.flatMap(s => s.values.map(Math.abs));
+    const maxV = Math.max(10, ...allVals);
+    const nLab = labels.length;
+    const groupW = plotW / nLab;
+    const barW = Math.min(26, (groupW - 10) / series.length);
+
+    ctx.strokeStyle = "#c5d0dc";
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, pad.t + plotH);
+    ctx.lineTo(pad.l + plotW, pad.t + plotH);
+    ctx.stroke();
+    ctx.fillStyle = "#5a6a7a";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("0", 10, pad.t + plotH + 4);
+    ctx.fillText(String(Math.round(maxV)), 4, pad.t + 10);
+
+    labels.forEach((lab, i) => {
+      const gx = pad.l + i * groupW + groupW / 2;
+      series.forEach((s, si) => {
+        const v = s.values[i];
+        const h = (Math.abs(v) / maxV) * plotH;
+        const x = gx - (series.length * barW) / 2 + si * barW;
+        const y = pad.t + plotH - h;
+        ctx.fillStyle = s.color;
+        ctx.fillRect(x, y, barW - 2, h);
+        if (v < 0) {
+          ctx.strokeStyle = s.color;
+          ctx.setLineDash([3, 2]);
+          ctx.strokeRect(x, y, barW - 2, h);
+          ctx.setLineDash([]);
+        }
+      });
+      ctx.fillStyle = "#1a2332";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(lab, gx, cssH - 12);
+      ctx.textAlign = "left";
+    });
+  }
+
+  function updateGraph() {
+    if (mode === "capillary") {
+      const c = computeCapillary();
+      els.graphCaption.textContent = "沿血管床流體壓力 FP、有效 OP 與淨壓（相對單位；淨壓可為負＝重吸收）";
+      els.graphLegend.innerHTML = '<span class="hp">流體壓力 FP</span><span class="op">有效滲透壓差</span><span class="net">｜淨壓｜</span>';
+      drawBars(["小動脈 FP", "小靜脈 FP", "有效 OP", "動脈淨壓", "靜脈淨壓"], [
+        { color: "#c62828", values: [c.HPa, c.HPv, 0, 0, 0] },
+        { color: "#1565c0", values: [0, 0, c.effectiveOP, 0, 0] },
+        { color: "#6d28d9", values: [0, 0, 0, Math.abs(c.netArt), Math.abs(c.netVen)] }
+      ]);
+    } else if (mode === "plant") {
+      const p = computePlant();
+      els.graphCaption.textContent = "植物細胞：內／外滲透壓與膨壓（相對單位）";
+      els.graphLegend.innerHTML = '<span class="op">滲透壓 OP</span><span class="hp">膨壓 TP</span>';
+      drawBars(["細胞內 OP", "外界 OP", "膨壓 TP"], [
+        { color: "#0d6e6e", values: [p.opInt, p.opExt, 0] },
+        { color: "#c45c26", values: [0, 0, p.tp] }
+      ]);
+    } else {
+      const a = computeAnimal();
+      els.graphCaption.textContent = "動物細胞：內／外滲透壓（無細胞壁膨壓）";
+      els.graphLegend.innerHTML = '<span class="op">滲透壓 OP</span>';
+      drawBars(["細胞內 OP", "外界 OP", "膨壓"], [
+        { color: "#0d6e6e", values: [a.opInt, a.opExt, 0] },
+        { color: "#c45c26", values: [0, 0, 0] }
+      ]);
+    }
+  }
+
+  function updateExplain() {
+    if (mode === "capillary") {
+      els.explain.innerHTML = `
+        <p>血液由<strong>小動脈（arteriole）</strong>分支進入<strong>微血管網（capillary network）</strong>，再匯入<strong>小靜脈（venule）</strong>。以<strong>流體力學（fluid mechanics）</strong>看，血管內<strong>流體壓力／血壓（fluid pressure, FP）</strong>沿血流方向<strong>逐漸下降</strong>（小動脈端高 → 小靜脈端低）。</p>
+        <ul>
+          <li><strong>流體壓力 FP</strong>：流動血液對管壁的壓力；較高時利於<strong>濾過（filtration）</strong>出至組織液。課本所稱血靜水壓可對照此概念。</li>
+          <li><strong>滲透壓／膠體滲透壓（osmotic / oncotic pressure, OP）</strong>：主要因血漿蛋白，吸引水<strong>重吸收（reabsorption）</strong>；簡化為沿床大致恆定，與遞減的 FP 對照。</li>
+          <li>當 FP 效應大於有效 OP 差 → <strong>淨濾過</strong>；反之 → <strong>淨重吸收</strong>。</li>
+        </ul>
+        <p style="font-size:.85rem;color:#5a6a7a"><em>簡化標示：</em>血流動力學以線性沿程降壓表示；非完整 Navier–Stokes／真實阻力網絡。Starling 交換為課程版；FP<sub>i</sub> 預設≈0；略去淋巴；相對單位。</p>`;
+      els.questions.innerHTML = `
+        <h3>課堂提問（主模式）</h3>
+        <ol>
+          <li>調低小動脈端流體壓力 FPₐ 或調高血漿 OP 後，濾過箭嘴與沿程壓力降如何改變？為甚麼？</li>
+          <li>為甚麼小靜脈端較常出現重吸收？與沿血管床的流體壓力降（FPₐ→FPᵥ）有何關係？</li>
+          <li>若 OP<sub>p</sub> 下降（如血漿蛋白減少），對組織液積聚有何概念性影響？</li>
+        </ol>`;
+    } else if (mode === "plant") {
+      els.explain.innerHTML = `
+        <p><strong>課堂例子（worked example）：</strong>把<strong>薯仔（potato）</strong>薄片放入不同濃度的<strong>蔗糖溶液（sucrose solution）</strong>——以<strong>相對單位</strong>模擬（非真實實驗 mol／dm³）。</p>
+        <ul>
+          <li><strong>稀溶液／近純水</strong>（外界溶質低）→ 水進入細胞 → <strong>膨脹（turgid）</strong>；細胞壁產生<strong>膨壓（turgor pressure, ψ<sub>p</sub>）</strong>。</li>
+          <li><strong>近等滲蔗糖</strong>→ 淨水移動≈0 → <strong>萎軟（flaccid）</strong>。</li>
+          <li><strong>濃蔗糖</strong>→ 水離開 → 液泡縮小、原生質體離開細胞壁 → <strong>質壁分離（plasmolysis）</strong>。</li>
+        </ul>
+        <p>水勢簡化：ψ ≈ ψ<sub>s</sub> + ψ<sub>p</sub>。溶質↑則 ψ<sub>s</sub> 更負；膨壓 ψ<sub>p</sub> 只在有細胞壁支撐時顯著。</p>
+        <p style="font-size:.85rem;color:#5a6a7a"><em>簡化標示：</em>相對序數尺度；略去時間與細胞壁彈性細節。</p>`;
+      els.questions.innerHTML = `
+        <h3>課堂提問（植物例子）</h3>
+        <ol>
+          <li>按「①稀／近純水」與「③濃蔗糖」，圖中液泡與原生質體有何不同？對應哪個專有名詞？</li>
+          <li>為甚麼膨脹時水不會無限進入？膨壓如何改變 ψ<sub>in</sub>？</li>
+          <li>質壁分離需要<strong>細胞壁</strong>；動物細胞為何用「皺縮」而非「質壁分離」？</li>
+          <li>若只提高細胞壁最大膨壓上限，在濃蔗糖下能否阻止質壁分離？為甚麼？</li>
+        </ol>`;
+    } else {
+      els.explain.innerHTML = `
+        <p>動物細胞<strong>無細胞壁</strong>，故無典型膨壓。低滲→膨脹／<strong>溶血（haemolysis）</strong>；高滲→<strong>皺縮（crenation）</strong>。</p>
+        <p style="font-size:.85rem;color:#5a6a7a">與主模式對照：微血管交換靠管壁兩側流體壓力 FP／滲透壓 OP，而非細胞壁膨壓。</p>`;
+      els.questions.innerHTML = `
+        <h3>課堂提問（延伸）</h3>
+        <ol>
+          <li>等滲輸液為何重要？</li>
+          <li>「溶血」與「濾過」可否混用？分別描述哪一層級結構？</li>
+        </ol>`;
+    }
+  }
+
+  function update() {
+    syncLabels();
+    els.interControls.classList.toggle("hidden", !els.showInter.checked);
+    if (mode === "capillary") {
+      const c = computeCapillary();
+      drawCapillary(c);
+      renderReadoutsCap(c);
+    } else if (mode === "plant") {
+      const p = computePlant();
+      drawPlant(p);
+      renderReadoutsPlant(p);
+    } else {
+      const a = computeAnimal();
+      drawAnimal(a);
+      renderReadoutsAnimal(a);
+    }
+    updateGraph();
+    updateExplain();
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      const on = btn.dataset.mode === m;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const isCap = m === "capillary";
+    els.ctrlCap.classList.toggle("hidden", !isCap);
+    els.ctrlCell.classList.toggle("hidden", isCap);
+    els.ctrlPlantExtra.classList.toggle("hidden", m !== "plant");
+    els.ctrlHint.textContent = isCap
+      ? "主模式：調校兩端流體壓力（血壓）與血漿滲透壓，觀察沿血管床的壓力降與濾過／重吸收。"
+      : (m === "plant" ? "植物例子：薯仔×蔗糖——調外界溶質，觀察膨脹→萎軟→質壁分離。" : "延伸：動物細胞滲透（無細胞壁）。");
+    // accent on ranges
+    document.querySelectorAll(".controls input[type=range]").forEach(inp => {
+      inp.style.accentColor = isCap ? "#a0451a" : (m === "plant" ? "#2d8a4e" : "#3b6ea5");
+    });
+    update();
+  }
+
+  function reset() {
+    const d = DEFAULTS[mode];
+    if (mode === "capillary") {
+      els.artHP.value = d.artHP;
+      els.venHP.value = d.venHP;
+      els.plasmaOP.value = d.plasmaOP;
+      els.interOP.value = d.interOP;
+      els.interHP.value = d.interHP;
+      els.showInter.checked = true;
+    } else {
+      els.extSolute.value = d.extSolute;
+      els.intSolute.value = d.intSolute;
+      if (d.maxTurgor != null) els.maxTurgor.value = d.maxTurgor;
+    }
+    update();
+  }
+
+  function applyPlantExample(key) {
+    // Potato cell internal solute ≈ 40 (relative); sucrose external varies
+    els.intSolute.value = 40;
+    els.maxTurgor.value = 70;
+    if (key === "potato-turgid") {
+      els.extSolute.value = 10; // dilute / near water
+    } else if (key === "potato-flaccid") {
+      els.extSolute.value = 42; // near-isotonic sucrose
+    } else if (key === "potato-plasmo") {
+      els.extSolute.value = 78; // concentrated sucrose
+    } else {
+      // full demo defaults: start turgid for teaching sequence
+      els.extSolute.value = 10;
+      els.intSolute.value = 40;
+      els.maxTurgor.value = 70;
+    }
+    update();
+  }
+
+  function presetTypical() {
+    if (mode === "capillary") {
+      els.artHP.value = 72;
+      els.venHP.value = 22;
+      els.plasmaOP.value = 45;
+      els.interOP.value = 10;
+      els.interHP.value = 0;
+      els.showInter.checked = true;
+    } else if (mode === "plant") {
+      applyPlantExample("potato-demo");
+    } else {
+      els.extSolute.value = 40;
+      els.intSolute.value = 40;
+    }
+    update();
+  }
+
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => setMode(btn.dataset.mode));
+  });
+  ["artHP","venHP","plasmaOP","interOP","interHP","extSolute","intSolute","maxTurgor"].forEach(id => {
+    $(id).addEventListener("input", update);
+  });
+  els.showInter.addEventListener("change", update);
+  $("btnReset").addEventListener("click", reset);
+  $("btnPresetTypical").addEventListener("click", presetTypical);
+  document.querySelectorAll("[data-plant-ex]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (mode !== "plant") setMode("plant");
+      applyPlantExample(btn.getAttribute("data-plant-ex"));
+    });
+  });
+  window.addEventListener("resize", updateGraph);
+
+  // Default: capillary primary
+  setMode("capillary");
+})();
+</script>
+</body>
+</html>
