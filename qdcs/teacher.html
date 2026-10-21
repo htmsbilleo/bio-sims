@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QDCS-lite｜老師編輯版 — 香港中學科學</title>
+<title>QDCS-lite｜老師編輯版</title>
 <style>
 /* QDCS-lite — clean color-card layout (HK TC) */
 :root {
@@ -430,6 +430,21 @@ a.hub-card.student .go { color: var(--green); }
 .mode-pill.student { background: var(--green-bg); color: var(--green); }
 body[data-mode="student"] header.app-header { border-left: 5px solid var(--green); }
 body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue); }
+.tag.sa { background: #e8f5e9; color: #2e7d32; }
+.tag.la { background: #e0f7fa; color: #00838f; }
+.tag.essay { background: #fce4ec; color: #ad1457; }
+.ta-short { min-height: 52px; }
+.ta-long { min-height: 110px; }
+.ta-essay { min-height: 180px; }
+.publish-banner {
+  background: var(--green-bg);
+  border: 1px solid var(--green-border);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: .88rem;
+}
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
@@ -439,7 +454,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
 
   <header class="app-header">
     <h1>QDCS-lite 老師編輯版<span class="mode-pill teacher">教師</span></h1>
-    <p class="sub">建卷 · 匯入 · 成績 · Drive · 產生學生連結 · <a href="index.html">封面</a> · <a href="student.html">學生版</a></p>
+    <p class="sub">建卷 · PDF/DOCX 匯入 · 發佈目前測驗 · 成績 · <a href="index.html">封面</a> · <a href="student.html">學生版</a></p>
   </header>
   
   <div class="legend" aria-label="顏色圖例">
@@ -448,22 +463,21 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     <span><i class="amber"></i>成績分析（琥珀）</span>
     <span><i class="purple"></i>模擬器／Drive（紫）</span>
   </div>
-  
+  <div id="publish-status" class="publish-banner">載入發佈狀態…</div>
   <div class="sync-note">
-    <strong>成績同步：</strong>與學生版須同一資料夾／同源（如 Pages <code>/qdcs/</code>）＋同一瀏覽器，提交後本頁「成績分析」可見。
-    跨裝置：請學生複製／下載作答 JSON，於此區<strong>匯入作答 JSON</strong>。
+    <strong>發佈 → 學生：</strong>儲存後按「發佈為目前測驗」，學生開 <code>student.html</code>（同源同瀏覽器）<strong>無需分享碼</strong>即載入。
+    備用仍可用 <code>#q=碼</code>。PDF 匯入僅擷取文字層（掃描圖無 OCR）。
   </div>
-  <nav class="nav-bar" aria-label="教師選單">
+  <nav class="nav-bar">
     <button type="button" class="nav-btn active" data-panel="teacher">教師出題</button>
     <button type="button" class="nav-btn" data-panel="import">簡化匯入</button>
     <button type="button" class="nav-btn" data-panel="analytics">成績分析</button>
     <button type="button" class="nav-btn" data-panel="drive">模擬器／Drive</button>
   </nav>
-
   <section id="panel-teacher" class="panel active">
     <div class="card tone-blue">
-      <h2><span class="dot blue"></span>教師出題 · Quiz builder</h2>
-      <p class="muted">MCQ／T/F／填充／短答 · 設答案與分數 · 儲存後產生 <code>student.html#q=碼</code></p>
+      <h2><span class="dot blue"></span>教師出題</h2>
+      <p class="muted">題型：MCQ、T/F、填充、短答、長答、論述</p>
       <div class="flex-gap">
         <button type="button" class="btn btn-primary" id="btn-new-quiz">＋ 新建</button>
         <button type="button" class="btn btn-sm" id="btn-export-json">下載測驗 JSON</button>
@@ -475,47 +489,47 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     </div>
     <div id="builder-wrap" class="card tone-blue hidden">
       <h2><span class="dot blue"></span>編輯測驗</h2>
-      <label class="field">標題 <input type="text" id="bq-title" placeholder="例如：滲透壓小測"></label>
+      <label class="field">標題 <input type="text" id="bq-title"></label>
       <div class="grid-2">
         <label class="field">科目 <input type="text" id="bq-subject"></label>
-        <label class="field">分享碼 <span id="bq-code" style="font-family:monospace;font-size:1.05rem"></span></label>
+        <label class="field">分享碼 <span id="bq-code" style="font-family:monospace"></span></label>
       </div>
       <label class="field">說明 <textarea id="bq-desc" rows="2"></textarea></label>
       <div class="flex-gap" style="margin:8px 0">
         <select id="new-q-type" class="field-select" style="width:auto">
-          <option value="mcq">MCQ</option>
-          <option value="tf">T/F</option>
-          <option value="fill">填充</option>
-          <option value="sa">短答</option>
+          <option value="mcq">多項選擇 MCQ</option>
+          <option value="tf">是非 T/F</option>
+          <option value="fill">填充 Fill-in</option>
+          <option value="sa">短答 Short</option>
+          <option value="la">長答 Long</option>
+          <option value="essay">論述 Essay</option>
         </select>
         <button type="button" class="btn" id="btn-add-q">新增題目</button>
-        <button type="button" class="btn btn-primary" id="btn-save-quiz">儲存並產生學生連結</button>
+        <button type="button" class="btn btn-primary" id="btn-save-quiz">儲存</button>
         <button type="button" class="btn" id="btn-cancel-builder">關閉</button>
       </div>
       <div id="builder-questions"></div>
       <div id="share-area"></div>
     </div>
   </section>
-
   <section id="panel-import" class="panel">
     <div class="card tone-blue">
-      <h2><span class="dot blue"></span>簡化匯入</h2>
-      <p class="muted">.txt／.md／貼上 · 非 OCR · 可選 mammoth 擷取 docx</p>
-      <label class="field">檔案 <input type="file" id="import-file" accept=".txt,.md,.docx,text/plain,text/markdown"></label>
+      <h2><span class="dot blue"></span>簡化匯入（TXT／MD／DOCX／PDF）</h2>
+      <p class="muted">DOCX：mammoth 純文字。PDF：pdf.js 文字層（<strong>非 OCR</strong>；掃描 PDF 請改貼上）。貼上文字仍可用。</p>
+      <label class="field">檔案
+        <input type="file" id="import-file" accept=".txt,.md,.docx,.pdf,text/plain,text/markdown,application/pdf">
+      </label>
       <label class="field">貼上文字 <textarea id="import-text" rows="10"></textarea></label>
       <div class="flex-gap">
         <button type="button" class="btn btn-primary" id="btn-parse-import">解析</button>
         <button type="button" class="btn btn-success" id="btn-import-apply" disabled>加入編輯中測驗</button>
       </div>
-      <h3>預覽</h3>
       <div id="import-preview" class="import-preview muted">尚未解析。</div>
     </div>
   </section>
-
   <section id="panel-analytics" class="panel">
     <div class="card tone-amber">
       <h2><span class="dot amber"></span>成績分析</h2>
-      <p class="muted">讀取本機 <code>qdcs_lite_attempts_v1</code>（與學生版共用）。跨裝置請匯入學生作答 JSON。</p>
       <div class="flex-gap">
         <select id="analytics-code" class="field-select" style="width:auto;min-width:200px"></select>
         <button type="button" class="btn btn-amber" id="btn-refresh-analytics">重新整理</button>
@@ -528,7 +542,6 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
       <div id="analytics-out" style="margin-top:10px"></div>
     </div>
   </section>
-
   <section id="panel-drive" class="panel">
     <div class="card tone-purple">
       <h2><span class="dot purple"></span>模擬器</h2>
@@ -539,22 +552,20 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     </div>
     <div class="card tone-purple">
       <h2><span class="dot purple"></span>匯出到 Google Drive</h2>
-      <p class="muted">靜態頁不能直連 Drive。下載後上傳，或請助手上傳 <code>drive-export/</code>。</p>
+      <p class="muted">靜態頁無 OAuth；下載後上傳或請助手代傳。</p>
       <label class="field">選擇測驗 <select id="drive-export-code" class="field-select"></select></label>
       <div class="flex-gap">
         <button type="button" class="btn btn-purple" id="btn-drive-json">下載測驗 JSON</button>
         <button type="button" class="btn btn-purple" id="btn-drive-csv">下載成績 CSV</button>
         <button type="button" class="btn btn-sm" id="btn-drive-readme">下載說明 .txt</button>
       </div>
-      <div id="drive-filename-hint" class="drive-hint muted">選擇測驗後顯示建議檔名。</div>
+      <div id="drive-filename-hint" class="drive-hint muted"></div>
     </div>
   </section>
-
   <section id="panel-home" class="panel hidden"></section>
   <section id="panel-student" class="panel hidden"><div id="student-root"></div></section>
-  <input type="hidden" id="join-code" />
-  <button type="button" id="btn-join" class="hidden"></button>
-  <footer class="app-foot">老師編輯版 · 學生連結：<code>student.html#q=碼</code> · <a href="index.html">返回封面</a></footer>
+  <input type="hidden" id="join-code" /><button type="button" id="btn-join" class="hidden"></button>
+  <footer class="app-foot">老師版 · 發佈後學生開 student.html 即可 · <a href="index.html">封面</a></footer>
 
 </div>
 <div id="toast" class="toast" role="status"></div>
@@ -634,19 +645,19 @@ window.QDCS_SAMPLE_QUIZ = {
     },
     {
       id: "q7",
-      type: "sa",
-      stem: "簡述為何動脈端以過濾為主、靜脈端以重吸收為主。（可用關鍵詞：hydrostatic / osmotic）",
-      answerKeywords: ["靜水壓", "hydrostatic", "滲透", "osmotic", "過濾", "filtration", "重吸收", "reabsorption", "下降", "decrease"],
-      marks: 2,
-      explanation: "動脈端靜水壓高 → 過濾；沿管靜水壓下降，靜脈端滲透壓相對重要 → 重吸收。評分以關鍵詞為準（簡化）。"
+      type: "la",
+      stem: "【長答】說明微血管動脈端與靜脈端液體交換的主要差異，並指出靜水壓與滲透壓的角色。",
+      answerKeywords: ["靜水壓", "hydrostatic", "滲透", "osmotic", "過濾", "filtration", "重吸收", "reabsorption", "動脈", "靜脈"],
+      marks: 4,
+      explanation: "長答關鍵詞比例給分；教師可再調分。"
     },
     {
       id: "q8",
-      type: "sa",
-      stem: "解釋馬鈴薯×不同濃度蔗糖實驗中，質量變化如何反映水勢差。",
-      answerKeywords: ["水勢", "water potential", "濃度", "concentration", "失水", "吸水", "osmosis", "滲透", "isotonic", "等滲"],
-      marks: 2,
-      explanation: "高蔗糖 → 外液水勢低 → 失水質量減；低蔗糖／清水 → 吸水質量增；接近等滲則變化少。"
+      type: "essay",
+      stem: "【論述】結合馬鈴薯×蔗糖實驗與微血管交換，討論「水勢／壓力差」概念如何同時應用於植物細胞與哺乳類微循環。（須組織段落）",
+      answerKeywords: ["水勢", "water potential", "靜水壓", "滲透", "osmosis", "蔗糖", "過濾", "重吸收"],
+      marks: 6,
+      explanation: "論述題以教師評閱為主；系統最多給參考半分。"
     }
   ]
 };
@@ -662,12 +673,15 @@ window.QDCS_SAMPLE_QUIZ = {
 
   const LS_QUIZZES = "qdcs_lite_quizzes_v1";
   const LS_ATTEMPTS = "qdcs_lite_attempts_v1";
+  const LS_PUBLISHED = "qdcs_lite_published_v1";
 
   const TYPE_LABEL = {
     mcq: "多項選擇 MCQ",
     tf: "是非 T/F",
     fill: "填充 Fill-in",
-    sa: "短答 Short answer"
+    sa: "短答 Short",
+    la: "長答 Long",
+    essay: "論述 Essay"
   };
 
   // ——— storage ———
@@ -808,18 +822,57 @@ window.QDCS_SAMPLE_QUIZ = {
       const exact = answers.some((a) => norm(a) === n);
       return { score: exact || ok ? marks : 0, max: marks, correct: exact || ok };
     }
+    // 短答：exact 或關鍵詞（較嚴）
     if (q.type === "sa") {
       const text = norm(studentAns);
-      const kws = q.answerKeywords || (Array.isArray(q.answer) ? q.answer : [q.answer]).filter(Boolean);
+      const exacts = Array.isArray(q.answer) ? q.answer : q.answer ? [q.answer] : [];
+      const kws = q.answerKeywords || [];
       if (!text) return { score: 0, max: marks, correct: false, matched: [] };
+      if (exacts.some((a) => norm(a) === text)) {
+        return { score: marks, max: marks, correct: true, matched: ["exact"] };
+      }
       const matched = kws.filter((k) => text.includes(norm(k)));
-      // half credit if ≥1 keyword, full if ≥2 or ≥ half of keywords
-      const need = Math.max(1, Math.ceil(Math.min(2, kws.length) / 1));
       let ratio = 0;
-      if (matched.length >= 2 || matched.length >= Math.ceil(kws.length / 2)) ratio = 1;
+      if (matched.length >= 2 || (kws.length && matched.length >= Math.ceil(kws.length / 2))) ratio = 1;
       else if (matched.length >= 1) ratio = 0.5;
       const score = Math.round(marks * ratio * 10) / 10;
       return { score, max: marks, correct: ratio === 1, partial: ratio === 0.5, matched };
+    }
+    // 長答：關鍵詞部分給分（較寬）
+    if (q.type === "la") {
+      const text = norm(studentAns);
+      const kws = q.answerKeywords || [];
+      if (!text) return { score: 0, max: marks, correct: false, matched: [], needsManual: false };
+      if (!kws.length) {
+        return { score: 0, max: marks, correct: false, partial: true, matched: [], needsManual: true, note: "待教師評閱" };
+      }
+      const matched = kws.filter((k) => text.includes(norm(k)));
+      const ratio = kws.length ? matched.length / kws.length : 0;
+      let award = 0;
+      if (ratio >= 0.6) award = 1;
+      else if (ratio >= 0.3 || matched.length >= 1) award = 0.5;
+      const score = Math.round(marks * award * 10) / 10;
+      return { score, max: marks, correct: award === 1, partial: award === 0.5, matched, needsManual: award < 1 };
+    }
+    // 論述：預設不自動給滿分；有關鍵詞則最多半分作參考，其餘待人工
+    if (q.type === "essay") {
+      const text = norm(studentAns);
+      const kws = q.answerKeywords || [];
+      if (!text) return { score: 0, max: marks, correct: false, matched: [], needsManual: true, note: "待教師評閱" };
+      const matched = kws.filter((k) => text.includes(norm(k)));
+      let score = 0;
+      if (kws.length && matched.length >= Math.max(1, Math.ceil(kws.length / 3))) {
+        score = Math.round(marks * 0.5 * 10) / 10;
+      }
+      return {
+        score,
+        max: marks,
+        correct: false,
+        partial: score > 0,
+        matched,
+        needsManual: true,
+        note: "論述題須教師評閱（系統僅給參考分）"
+      };
     }
     return { score: 0, max: marks, correct: false };
   }
@@ -900,16 +953,15 @@ window.QDCS_SAMPLE_QUIZ = {
       return { id: uid("q"), type: "fill", stem: stemLine + (rest.length ? "\n" + rest.join("\n") : ""), answer: fills.length ? fills : [""], marks: 1, explanation: "" };
     }
 
-    // default short answer
+    const stemRest = stemLine + (nonOpt.filter((l) => l !== ansLine).length ? "\n" + nonOpt.filter((l) => l !== ansLine).join("\n") : "");
     const kws = answerHint ? answerHint.split(/[/;,，、]/).map((s) => s.trim()).filter(Boolean) : [];
-    return {
-      id: uid("q"),
-      type: "sa",
-      stem: stemLine + (nonOpt.filter((l) => l !== ansLine).length ? "\n" + nonOpt.filter((l) => l !== ansLine).join("\n") : ""),
-      answerKeywords: kws,
-      marks: 2,
-      explanation: ""
-    };
+    if (/論述|essay|討論|試論/i.test(chunk)) {
+      return { id: uid("q"), type: "essay", stem: stemRest, answerKeywords: kws, marks: 6, explanation: "" };
+    }
+    if (/長答|long\s*answer|詳細說明|試解釋/i.test(chunk) || stemRest.length > 120) {
+      return { id: uid("q"), type: "la", stem: stemRest, answerKeywords: kws, marks: 4, explanation: "" };
+    }
+    return { id: uid("q"), type: "sa", stem: stemRest, answerKeywords: kws, answer: kws.slice(0, 1), marks: 2, explanation: "" };
   }
 
   // ——— builder state ———
@@ -937,6 +989,17 @@ window.QDCS_SAMPLE_QUIZ = {
       base.answer = true;
     } else if (type === "fill") {
       base.answer = [""];
+    } else if (type === "sa") {
+      base.answer = [""];
+      base.answerKeywords = [];
+      base.marks = 2;
+    } else if (type === "la") {
+      base.answerKeywords = [];
+      base.marks = 4;
+    } else if (type === "essay") {
+      base.answerKeywords = [];
+      base.marks = 6;
+      base.markingNote = "論述題：課堂後由教師評閱；關鍵詞僅作參考分";
     } else {
       base.answerKeywords = [];
       base.marks = 2;
@@ -944,10 +1007,38 @@ window.QDCS_SAMPLE_QUIZ = {
     return base;
   }
 
+  function getPublished() {
+    try {
+      const raw = localStorage.getItem(LS_PUBLISHED);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function publishQuiz(quiz) {
+    if (!quiz || !quiz.code) return;
+    const copy = JSON.parse(JSON.stringify(quiz));
+    const payload = {
+      publishedAt: new Date().toISOString(),
+      code: copy.code,
+      title: copy.title || copy.code,
+      quiz: copy
+    };
+    localStorage.setItem(LS_PUBLISHED, JSON.stringify(payload));
+    const map = loadQuizzes();
+    map[copy.code] = copy;
+    saveQuizzes(map);
+    return payload;
+  }
+
+  function unpublishQuiz() {
+    localStorage.removeItem(LS_PUBLISHED);
+  }
+
   function renderHome() {
     const map = loadQuizzes();
     const list = document.getElementById("home-quiz-list");
-    if (!list) return;
     const codes = Object.keys(map);
     if (!codes.length) {
       list.innerHTML = '<p class="muted">尚未有測驗。請到「教師建卷」建立，或載入示範卷 BIODEMO。</p>';
@@ -1002,7 +1093,8 @@ window.QDCS_SAMPLE_QUIZ = {
           <div class="muted">${(q.questions || []).length} 題</div></div>
           <div class="flex-gap">
             <button type="button" class="btn btn-sm" data-edit="${escapeHtml(c)}">編輯</button>
-            <button type="button" class="btn btn-sm" data-copy="${escapeHtml(c)}">複製連結</button>
+            <button type="button" class="btn btn-sm btn-success" data-pub="${escapeHtml(c)}">發佈</button>
+            <button type="button" class="btn btn-sm" data-copy="${escapeHtml(c)}">複製學生頁</button>
             <button type="button" class="btn btn-sm btn-danger" data-del="${escapeHtml(c)}">刪除</button>
           </div></div>`;
         })
@@ -1013,11 +1105,22 @@ window.QDCS_SAMPLE_QUIZ = {
     );
     el.querySelectorAll("[data-copy]").forEach((b) =>
       b.addEventListener("click", () => {
-        const link = studentLink(b.getAttribute("data-copy"));
+        const link = studentLink(b.getAttribute("data-copy")).replace(/#q=.*/, "");
         navigator.clipboard.writeText(link).then(
-          () => toast("已複製學生連結"),
+          () => toast("已複製學生頁（發佈後無需碼）"),
           () => toast(link)
         );
+      })
+    );
+    el.querySelectorAll("[data-pub]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const code = b.getAttribute("data-pub");
+        const q = loadQuizzes()[code];
+        if (!q) return;
+        publishQuiz(q);
+        toast("已發佈「" + (q.title || code) + "」為目前測驗");
+        updatePublishBanner();
+        renderTeacherList();
       })
     );
     el.querySelectorAll("[data-del]").forEach((b) =>
@@ -1071,9 +1174,23 @@ window.QDCS_SAMPLE_QUIZ = {
         } else if (q.type === "fill") {
           const ans = Array.isArray(q.answer) ? q.answer.join(" / ") : q.answer || "";
           body = `<label class="field">可接受答案（以 / 分隔）<input type="text" data-qi="${i}" data-fillans value="${escapeHtml(ans)}" /></label>`;
+        } else if (q.type === "sa") {
+          const ans = Array.isArray(q.answer) ? q.answer.join(" / ") : q.answer || "";
+          const kws = (q.answerKeywords || []).join(" / ");
+          body = `<label class="field">短答可接受答案（exact，/ 分隔）<input type="text" data-qi="${i}" data-saans value="${escapeHtml(ans)}" /></label>
+            <label class="field">關鍵詞（選填，/ 分隔）<input type="text" data-qi="${i}" data-sakw value="${escapeHtml(kws)}" /></label>
+            <p class="muted">評分：先 exact，再關鍵詞（全對／半分）</p>`;
+        } else if (q.type === "la") {
+          const kws = (q.answerKeywords || []).join(" / ");
+          body = `<label class="field">長答關鍵詞（/ 分隔，按比例給分）<input type="text" data-qi="${i}" data-sakw value="${escapeHtml(kws)}" /></label>
+            <p class="muted">評分：命中約 60% 關鍵詞→滿分；部分→半分；無關鍵詞則標「待評閱」</p>`;
+        } else if (q.type === "essay") {
+          const kws = (q.answerKeywords || []).join(" / ");
+          body = `<label class="field">論述參考關鍵詞（選填）<input type="text" data-qi="${i}" data-sakw value="${escapeHtml(kws)}" /></label>
+            <p class="muted">論述題以教師評閱為主；系統最多給參考半分</p>`;
         } else {
           const kws = (q.answerKeywords || []).join(" / ");
-          body = `<label class="field">關鍵詞 keywords（以 / 分隔，自動評分用）<input type="text" data-qi="${i}" data-sakw value="${escapeHtml(kws)}" /></label>`;
+          body = `<label class="field">關鍵詞<input type="text" data-qi="${i}" data-sakw value="${escapeHtml(kws)}" /></label>`;
         }
         return `<div class="q-block" data-qi="${i}">
           <div class="q-head">
@@ -1134,6 +1251,11 @@ window.QDCS_SAMPLE_QUIZ = {
         editQuiz.questions[+el.dataset.qi].answerKeywords = el.value.split("/").map((s) => s.trim()).filter(Boolean);
       })
     );
+    box.querySelectorAll("[data-saans]").forEach((el) =>
+      el.addEventListener("input", () => {
+        editQuiz.questions[+el.dataset.qi].answer = el.value.split("/").map((s) => s.trim()).filter(Boolean);
+      })
+    );
     box.querySelectorAll("[data-rmq]").forEach((el) =>
       el.addEventListener("click", () => {
         editQuiz.questions.splice(+el.dataset.rmq, 1);
@@ -1180,31 +1302,73 @@ window.QDCS_SAMPLE_QUIZ = {
     map[editQuiz.code] = editQuiz;
     saveQuizzes(map);
     const link = studentLink(editQuiz.code);
+    const plainStudent = studentLink(editQuiz.code).replace(/#q=.*/, "").replace(/\?.*$/, "");
+    const pub = getPublished();
+    const isPub = pub && pub.code === editQuiz.code;
     document.getElementById("share-area").innerHTML = `
       <div class="share-box">
-        <div><strong>分享碼 Share code：</strong> <code>${escapeHtml(editQuiz.code)}</code></div>
-        <div style="margin-top:6px"><strong>學生連結：</strong><br/><code id="share-link">${escapeHtml(link)}</code></div>
+        <div><strong>已儲存</strong> · 碼 <code>${escapeHtml(editQuiz.code)}</code>
+          ${isPub ? ' · <span class="tag" style="background:#e8f5e9;color:#2e7d32">目前發佈中</span>' : ""}
+        </div>
+        <p class="muted" style="margin:8px 0">建議：按「發佈為目前測驗」後，學生直接開 <code>student.html</code>（<strong>無需輸入分享碼</strong>，同源同瀏覽器）。</p>
         <div class="flex-gap" style="margin-top:8px">
-          <button type="button" class="btn btn-sm btn-primary" id="btn-copy-link">複製連結</button>
+          <button type="button" class="btn btn-sm btn-success" id="btn-publish-quiz">發佈為目前測驗</button>
+          <button type="button" class="btn btn-sm" id="btn-unpublish-quiz">取消發佈</button>
+          <button type="button" class="btn btn-sm btn-primary" id="btn-copy-link">複製學生頁連結</button>
           <button type="button" class="btn btn-sm" id="btn-preview-stu">預覽作答</button>
         </div>
-        <p class="muted" style="margin:8px 0 0">注意：資料存於本機瀏覽器 localStorage。學生須在<strong>同一瀏覽器設定檔</strong>開啟，或教師先匯出 JSON 給學生匯入。跨裝置需手動匯出／匯入（見 README）。</p>
+        <div style="margin-top:8px" class="muted">備用（有碼）：<code id="share-link">${escapeHtml(link)}</code></div>
       </div>`;
     document.getElementById("btn-copy-link").onclick = () => {
-      navigator.clipboard.writeText(link).then(() => toast("已複製"), () => toast(link));
+      const url = plainStudent || link;
+      navigator.clipboard.writeText(url).then(() => toast("已複製學生頁連結"), () => toast(url));
     };
     document.getElementById("btn-preview-stu").onclick = () => openStudent(editQuiz.code);
+    document.getElementById("btn-publish-quiz").onclick = () => {
+      publishQuiz(editQuiz);
+      toast("已發佈「目前測驗」— 學生開 student.html 即載入");
+      saveCurrentQuiz();
+    };
+    document.getElementById("btn-unpublish-quiz").onclick = () => {
+      unpublishQuiz();
+      toast("已取消發佈");
+      saveCurrentQuiz();
+    };
     toast("已儲存測驗 " + editQuiz.code);
     renderTeacherList();
+    updatePublishBanner();
+  }
+
+  function updatePublishBanner() {
+    const el = document.getElementById("publish-status");
+    if (!el) return;
+    const pub = getPublished();
+    if (!pub || !pub.quiz) {
+      el.innerHTML = '<span class="muted">尚未發佈目前測驗。儲存後按「發佈為目前測驗」。</span>';
+      return;
+    }
+    el.innerHTML = `目前發佈：<strong>${escapeHtml(pub.title || pub.code)}</strong> <code>${escapeHtml(pub.code)}</code>
+      <span class="muted">（${escapeHtml(formatHK(pub.publishedAt))}）</span>
+      — 學生開 <code>student.html</code> 自動載入`;
   }
 
   // ——— student ———
   function openStudent(code) {
     code = (code || "").toUpperCase();
+    let quiz = null;
     const map = loadQuizzes();
-    const quiz = map[code];
+    if (code && map[code]) quiz = map[code];
     if (!quiz) {
-      toast("找不到測驗碼：" + code);
+      const pub = getPublished();
+      if (pub && pub.quiz) {
+        quiz = pub.quiz;
+        code = (quiz.code || "").toUpperCase();
+        map[code] = quiz;
+        saveQuizzes(map);
+      }
+    }
+    if (!quiz) {
+      toast(code ? ("找不到測驗碼：" + code) : "尚未有「目前發佈」測驗，請老師先發佈，或輸入分享碼");
       return;
     }
     showPanel("student");
@@ -1250,8 +1414,15 @@ window.QDCS_SAMPLE_QUIZ = {
             <label class="choice-label"><input type="radio" name="sq_${i}" value="false" /> 錯誤 False</label>`;
         } else if (q.type === "fill") {
           inputs = `<input type="text" class="field-input" id="sq_${i}" placeholder="填寫答案" />`;
+        } else if (q.type === "sa") {
+          inputs = `<textarea class="field-textarea ta-short" id="sq_${i}" rows="2" placeholder="短答（exact／關鍵詞自動評分）"></textarea>`;
+        } else if (q.type === "la") {
+          inputs = `<textarea class="field-textarea ta-long" id="sq_${i}" rows="5" placeholder="長答（請寫出要點；關鍵詞部分給分）"></textarea>`;
+        } else if (q.type === "essay") {
+          inputs = `<textarea class="field-textarea ta-essay" id="sq_${i}" rows="8" placeholder="論述題（教師評閱為主；可先寫完整答案）"></textarea>
+            <p class="muted">論述題提交後系統僅給參考分，最終以教師評閱為準。</p>`;
         } else {
-          inputs = `<textarea class="field-textarea" id="sq_${i}" rows="3" placeholder="短答（關鍵詞自動評分，僅供參考）"></textarea>`;
+          inputs = `<textarea class="field-textarea" id="sq_${i}" rows="3" placeholder="作答"></textarea>`;
         }
         return `<div class="student-q" id="sqwrap_${i}">
           <div class="stem">Q${i + 1}. ${escapeHtml(q.stem).replace(/\n/g, "<br/>")}
@@ -1328,6 +1499,8 @@ window.QDCS_SAMPLE_QUIZ = {
         const d = details[i];
         let fb = `<div class="muted" style="margin-top:6px">本題：${d.score}/${d.max}`;
         if (d.partial) fb += "（部分分數）";
+        if (d.needsManual) fb += " · <strong>待教師評閱</strong>";
+        if (d.note) fb += " · " + escapeHtml(d.note);
         if (q.explanation) fb += " · " + escapeHtml(q.explanation);
         fb += "</div>";
         wrap.insertAdjacentHTML("beforeend", fb);
@@ -1761,7 +1934,7 @@ window.QDCS_SAMPLE_QUIZ = {
     reader.readAsText(file);
   }
 
-  // ——— mammoth optional ———
+  // ——— mammoth (DOCX) + pdf.js (PDF text layer; no OCR) ———
   function loadDocx(file) {
     if (typeof mammoth === "undefined") {
       toast("mammoth.js 未載入，請改用貼上文字");
@@ -1777,6 +1950,49 @@ window.QDCS_SAMPLE_QUIZ = {
           runImport();
         })
         .catch(() => toast("無法讀取 docx"));
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function ensurePdfJs() {
+    return new Promise((resolve, reject) => {
+      if (typeof pdfjsLib !== "undefined") return resolve(pdfjsLib);
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+      s.onload = () => {
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+          resolve(pdfjsLib);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      s.onerror = () => reject(new Error("pdf.js 載入失敗"));
+      document.head.appendChild(s);
+    });
+  }
+
+  function loadPdf(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      ensurePdfJs()
+        .then((pdfjs) => pdfjs.getDocument({ data: reader.result }).promise)
+        .then(async (pdf) => {
+          const parts = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const tc = await page.getTextContent();
+            const line = tc.items.map((it) => it.str).join(" ");
+            parts.push(line);
+          }
+          const text = parts.join("\n\n").replace(/[ \t]+/g, " ").trim();
+          document.getElementById("import-text").value = text || "";
+          if (!text) toast("PDF 沒有可擷取文字（可能是掃描圖，本工具不做 OCR）");
+          else toast("已擷取 PDF 文字層（非 OCR）· " + pdf.numPages + " 頁");
+          runImport();
+        })
+        .catch((e) => toast("無法讀取 PDF：" + (e && e.message ? e.message : "請改貼上文字")));
     };
     reader.readAsArrayBuffer(file);
   }
@@ -1832,6 +2048,7 @@ window.QDCS_SAMPLE_QUIZ = {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
       if (/\.docx$/i.test(f.name)) loadDocx(f);
+      else if (/\.pdf$/i.test(f.name)) loadPdf(f);
       else {
         const reader = new FileReader();
         reader.onload = () => {
@@ -1890,32 +2107,38 @@ window.QDCS_SAMPLE_QUIZ = {
     const fromUrl = getShareFromUrl();
 
     if (mode === "student") {
-      // Student-only page: hide teacher chrome if present
       document.querySelectorAll(".nav-bar, #panel-home, #panel-teacher, #panel-import, #panel-analytics, #panel-drive, .legend-teacher").forEach((el) => {
         if (el) el.classList.add("hidden");
       });
       const hub = document.getElementById("hub-landing");
       if (hub) hub.classList.add("hidden");
       showPanel("student");
-      if (fromUrl) setTimeout(() => openStudent(fromUrl), 0);
-      else {
-        const root = document.getElementById("student-root");
-        if (root && !root.querySelector("#stu-name")) {
-          /* keep default join UI */
+      const boot = () => {
+        if (fromUrl) {
+          openStudent(fromUrl);
+          return;
         }
-      }
+        const pub = getPublished();
+        if (pub && pub.quiz) {
+          openStudent(pub.code || pub.quiz.code);
+          return;
+        }
+        // show enter UI already in DOM; update status
+        const st = document.getElementById("student-pub-status");
+        if (st) st.textContent = "老師尚未發佈「目前測驗」。請稍候，或使用備用分享碼。";
+      };
+      setTimeout(boot, 0);
       return;
     }
 
     if (mode === "teacher") {
-      document.querySelectorAll("#panel-student .tone-green").forEach(() => {});
       const hub = document.getElementById("hub-landing");
       if (hub) hub.classList.add("hidden");
-      // Hide student nav / panels clutter
       document.querySelectorAll('.nav-btn[data-panel="student"], .nav-btn[data-panel="home"]').forEach((b) => b.classList.add("hidden"));
       const stuPanel = document.getElementById("panel-student");
       if (stuPanel) stuPanel.classList.add("hidden");
       showPanel("teacher");
+      updatePublishBanner();
       return;
     }
 

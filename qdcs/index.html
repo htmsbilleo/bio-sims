@@ -27,9 +27,8 @@
   </div>
 
   <div class="sync-note">
-    <strong>成績如何互通：</strong>
-    老師與學生須開啟<strong>同一資料夾／同源網址</strong>（例如 GitHub Pages 的 <code>/qdcs/</code>）並用<strong>同一瀏覽器設定檔</strong>，提交後成績會寫入共用的 <code>localStorage</code>，老師「成績分析」即可看見。
-    若換電腦／換瀏覽器：學生提交後「複製作答 JSON」或下載檔案，老師在成績區「匯入作答 JSON」。
+    <strong>發佈流程：</strong>老師在 teacher.html 儲存後按「發佈為目前測驗」→ 學生開 <code>student.html</code>（同一 <code>/qdcs/</code> 資料夾、同一瀏覽器）<strong>無需分享碼</strong>即載入。
+    成績寫入共用 localStorage；跨裝置用作答 JSON。匯入支援 TXT／MD／DOCX／PDF（PDF 文字層，非 OCR）。
   </div>
 
   <div class="hub-grid">
@@ -40,7 +39,7 @@
     </a>
     <a class="hub-card student" href="student.html">
       <h2><span class="dot green"></span> 學生作答版</h2>
-      <p>版面與老師版相同色卡結構；只能作答，不能改題。提交後自動評分並同步本機成績。</p>
+      <p>自動載入「目前發佈」測驗（通常無需分享碼）；只能作答；提交後同步本機成績。</p>
       <span class="go">進入學生版 →</span>
     </a>
   </div>
@@ -48,13 +47,13 @@
   <div class="card tone-purple" style="margin-top:14px">
     <h2><span class="dot purple"></span>快速開始</h2>
     <ol class="muted" style="margin:0;padding-left:1.2em">
-      <li>老師開 <code>teacher.html</code> → 載入示範卷 <strong>BIODEMO</strong> 或自建卷</li>
-      <li>複製學生連結：<code>student.html#q=分享碼</code></li>
-      <li>學生作答提交 → 老師重新整理「成績分析」</li>
+      <li>老師開 <code>teacher.html</code> → 載入／自建 → <strong>發佈為目前測驗</strong></li>
+      <li>學生開 <code>student.html</code>（無需碼）作答提交</li>
+      <li>老師「成績分析」重新整理（同瀏覽器）</li>
     </ol>
     <div class="flex-gap" style="margin-top:10px">
       <a class="btn btn-sm btn-purple" href="../hydrostatic-osmotic-pressure.html" target="_blank" rel="noopener">開啟模擬器</a>
-      <a class="btn btn-sm" href="student.html#q=BIODEMO">試做 BIODEMO</a>
+      <a class="btn btn-sm" href="student.html">學生版</a>
     </div>
   </div>
 

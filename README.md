@@ -21,11 +21,11 @@ Named page: <https://htmsbilleo.github.io/bio-sims/hydrostatic-osmotic-pressure.
 
 ## QDCS-lite 測驗（老師／學生分頁）
 
-`qdcs/index.html` 是封面入口（老師／學生分流）。`qdcs/teacher.html` 是老師編輯版（出題、匯入、成績、Drive 匯出）。`qdcs/student.html` 是學生作答版：色卡版面與老師版相同，題目唯讀，提交後以同一來源的 localStorage 同步成績。根目錄 `qdcs-lite.html` 轉到該入口。資料存在瀏覽器 localStorage，不是伺服器成績庫。
+`qdcs/teacher.html` 是老師編輯版（出題、TXT／MD／DOCX／PDF 匯入、短答／長答／論述、成績、Drive 匯出）。儲存後按「發佈為目前測驗」，學生開同一資料夾的 `qdcs/student.html`（同一瀏覽器）無需分享碼即可載入；分享碼仍可作備用。`qdcs/index.html` 是入口，連結兩邊。根目錄 `qdcs-lite.html` 轉到該入口。資料存在瀏覽器 localStorage，不是伺服器成績庫。PDF 只抽文字層，不是 OCR。
 
-`qdcs/index.html` is the cover hub (teacher / student). `qdcs/teacher.html` is the teacher editor (authoring, import, scores, Drive export). `qdcs/student.html` is the student answer page: the same colour-card layout as the teacher page, questions read-only, and scores synced through same-origin localStorage after submit. Root `qdcs-lite.html` redirects to that hub. Data stays in the browser’s localStorage, not on a server.
+`qdcs/teacher.html` is the teacher editor (authoring, TXT/MD/DOCX/PDF import, short/long/essay items, scores, Drive export). After **Publish as current quiz**, students open `qdcs/student.html` in the same folder and same browser and load it without a share code; a code still works as a fallback. `qdcs/index.html` is the hub and links both pages. Root `qdcs-lite.html` redirects to that hub. Data stays in the browser’s localStorage, not on a server. PDF import reads the text layer only, not OCR.
 
 - 老師編輯版：<https://htmsbilleo.github.io/bio-sims/qdcs/teacher.html>
-- 學生作答版（示範碼 BIODEMO）：<https://htmsbilleo.github.io/bio-sims/qdcs/student.html#q=BIODEMO>
+- 學生作答版（已發佈則免碼；備用示範碼 BIODEMO）：<https://htmsbilleo.github.io/bio-sims/qdcs/student.html>
 - 入口：<https://htmsbilleo.github.io/bio-sims/qdcs/>
 - 舊連結：<https://htmsbilleo.github.io/bio-sims/qdcs-lite.html>
