@@ -18,3 +18,12 @@ Educational biology simulators in **relative units**. Values are for classroom e
 網站：<https://htmsbilleo.github.io/bio-sims/>
 
 Named page: <https://htmsbilleo.github.io/bio-sims/hydrostatic-osmotic-pressure.html>
+
+## QDCS-lite 課堂測驗 / Classroom quiz
+
+`qdcs-lite.html` 與 `qdcs/index.html` 是同一頁（自含 HTML，無需建置）。香港中學科學課堂測驗：教師出題、分享碼作答、成績分析。資料存在瀏覽器 localStorage，不是伺服器成績庫。
+
+`qdcs-lite.html` and `qdcs/index.html` are the same self-contained page (no build step). HK secondary-science classroom quiz: teacher builder, share-code attempts, and score analytics. Data stays in the browser’s localStorage, not on a server.
+
+- 根路徑：<https://htmsbilleo.github.io/bio-sims/qdcs-lite.html>
+- 資料夾入口（頁內分享連結以 `index.html#q=…` 表示，用這個網址較順）：<https://htmsbilleo.github.io/bio-sims/qdcs/>
