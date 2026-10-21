@@ -459,9 +459,9 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
   
   <div class="legend" aria-label="顏色圖例">
     <span><i class="blue"></i>教師出題（藍）</span>
-    <span><i class="green"></i>學生作答（綠）</span>
     <span><i class="amber"></i>成績分析（琥珀）</span>
     <span><i class="purple"></i>模擬器／Drive（紫）</span>
+    <span><i class="green"></i>學生作答在獨立頁（綠）</span>
   </div>
   <div id="publish-status" class="publish-banner">載入發佈狀態…</div>
   <div class="sync-note">
@@ -570,7 +570,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     </div>
   </section>
   <section id="panel-home" class="panel hidden"></section>
-  <section id="panel-student" class="panel hidden"><div id="student-root"></div></section>
+  <section id="panel-student" class="panel hidden" aria-hidden="true"></section>
   <input type="hidden" id="join-code" /><button type="button" id="btn-join" class="hidden"></button>
   <footer class="app-foot">老師版 · 發佈後學生開 student.html 即可 · <a href="index.html">封面</a></footer>
 
@@ -745,6 +745,8 @@ window.QDCS_SAMPLE_QUIZ = {
   }
 
   function showPanel(name) {
+    // Teacher edition must never activate an in-page student answering panel
+    if (pageMode() === "teacher" && name === "student") return;
     document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
     const panel = document.getElementById("panel-" + name);
@@ -1046,6 +1048,7 @@ window.QDCS_SAMPLE_QUIZ = {
   function renderHome() {
     const map = loadQuizzes();
     const list = document.getElementById("home-quiz-list");
+    if (!list) return;
     const codes = Object.keys(map);
     if (!codes.length) {
       list.innerHTML = '<p class="muted">尚未有測驗。請到「教師建卷」建立，或載入示範卷 BIODEMO。</p>';
@@ -1061,7 +1064,7 @@ window.QDCS_SAMPLE_QUIZ = {
             <div class="muted">${(q.questions || []).length} 題 · ${escapeHtml(q.subject || "")}</div>
           </div>
           <div class="flex-gap">
-            <button type="button" class="btn btn-sm btn-primary" data-take="${escapeHtml(c)}">學生作答</button>
+            <button type="button" class="btn btn-sm btn-primary" data-take="${escapeHtml(c)}">開啟學生頁</button>
             <button type="button" class="btn btn-sm" data-anal="${escapeHtml(c)}">成績</button>
           </div>
         </div>`;
@@ -1322,7 +1325,7 @@ window.QDCS_SAMPLE_QUIZ = {
           <button type="button" class="btn btn-sm btn-success" id="btn-publish-quiz">發佈為目前測驗</button>
           <button type="button" class="btn btn-sm" id="btn-unpublish-quiz">取消發佈</button>
           <button type="button" class="btn btn-sm btn-primary" id="btn-copy-link">複製學生頁連結</button>
-          <button type="button" class="btn btn-sm" id="btn-preview-stu">預覽作答</button>
+          <button type="button" class="btn btn-sm" id="btn-preview-stu">預覽學生頁</button>
         </div>
         <div style="margin-top:8px" class="muted">備用（有碼）：<code id="share-link">${escapeHtml(link)}</code></div>
       </div>`;
@@ -1330,7 +1333,10 @@ window.QDCS_SAMPLE_QUIZ = {
       const url = plainStudent || link;
       navigator.clipboard.writeText(url).then(() => toast("已複製學生頁連結"), () => toast(url));
     };
-    document.getElementById("btn-preview-stu").onclick = () => openStudent(editQuiz.code);
+    document.getElementById("btn-preview-stu").onclick = () => {
+      // Always open dedicated student.html (teacher page never embeds answering UI)
+      openStudent(editQuiz.code);
+    };
     document.getElementById("btn-publish-quiz").onclick = () => {
       publishQuiz(editQuiz);
       toast("已發佈「目前測驗」— 學生開 student.html 即載入");
@@ -1360,7 +1366,21 @@ window.QDCS_SAMPLE_QUIZ = {
   }
 
   // ——— student ———
+  function studentPageUrl(code) {
+    const withHash = studentLink(code || "_");
+    const base = withHash.replace(/#q=.*/, "").replace(/\?.*$/, "");
+    if (code) return base + "#q=" + encodeURIComponent(String(code).toUpperCase());
+    return base;
+  }
+
   function openStudent(code) {
+    // Teacher page: never embed in-page answering — open dedicated student.html
+    if (pageMode() === "teacher") {
+      const url = studentPageUrl(code);
+      window.open(url, "_blank", "noopener");
+      toast(code ? ("已開啟學生頁（" + String(code).toUpperCase() + "）") : "已開啟學生頁");
+      return;
+    }
     code = (code || "").toUpperCase();
     let quiz = null;
     const map = loadQuizzes();
@@ -2260,7 +2280,11 @@ window.QDCS_SAMPLE_QUIZ = {
       if (hub) hub.classList.add("hidden");
       document.querySelectorAll('.nav-btn[data-panel="student"], .nav-btn[data-panel="home"]').forEach((b) => b.classList.add("hidden"));
       const stuPanel = document.getElementById("panel-student");
-      if (stuPanel) stuPanel.classList.add("hidden");
+      if (stuPanel) {
+        stuPanel.classList.add("hidden");
+        stuPanel.setAttribute("aria-hidden", "true");
+        stuPanel.innerHTML = ""; // never render student answering form inside teacher
+      }
       showPanel("teacher");
       updatePublishBanner();
       return;
