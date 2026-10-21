@@ -319,14 +319,39 @@ table.scores th { background: var(--amber-bg); }
 .tag.sa { background: #e8f5e9; color: #2e7d32; }
 
 .import-preview {
-  max-height: 240px;
+  max-height: 420px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid var(--blue-border);
   border-radius: 6px;
   padding: 8px;
   font-size: .82rem;
-  white-space: pre-wrap;
+  white-space: normal;
+}
+.import-preview .ip-sum {
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+.import-preview .ip-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: #fafbfc;
+}
+.import-preview .ip-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.import-preview .ip-stem { margin: 6px 0 4px; }
+.import-preview .ip-opts {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+.import-preview .ip-opts .ok { color: var(--ok); font-weight: 600; }
+.import-preview .ip-ans { color: var(--muted); font-size: .8rem; margin: 4px 0 0; }
+.q-head select[data-qtype] {
+  font-size: .8rem;
+  max-width: 160px;
+  padding: 2px 4px;
 }
 
 .drive-hint {
@@ -521,6 +546,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
         <strong>掃描／圖片 OCR</strong>（Tesseract.js CDN，繁中 chi_tra＋英文）辨識。
         亦可直接上傳 PNG／JPG。
         <br/><strong>限制：</strong>OCR 為簡化版、首次需下載 CDN、準確度有限；離線僅文字層／貼上可用。最多約 12 頁 OCR。
+        <br/>解析後會按題型（MCQ／是非／填充／短答／長答／論述）預覽；按「建成測驗」自動開新卷並儲存。
       </p>
       <label class="field">檔案
         <input type="file" id="import-file" accept=".txt,.md,.docx,.pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,text/plain,text/markdown,application/pdf,image/*">
@@ -529,7 +555,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
       <label class="field">貼上文字 <textarea id="import-text" rows="10"></textarea></label>
       <div class="flex-gap">
         <button type="button" class="btn btn-primary" id="btn-parse-import">解析</button>
-        <button type="button" class="btn btn-success" id="btn-import-apply" disabled>加入編輯中測驗</button>
+        <button type="button" class="btn btn-success" id="btn-import-apply" disabled>建成測驗</button>
       </div>
       <div id="import-preview" class="import-preview muted">尚未解析。</div>
     </div>
@@ -892,6 +918,9 @@ window.QDCS_SAMPLE_QUIZ = {
     const chunks = [];
     let cur = [];
     const startRe = /^(?:Q\s*\d+|第\s*\d+\s*題|\d+[\.\)、]|[（(]\d+[）)]|\d+\s*[\.\)])\s*/i;
+    const stemCueRe = /^(?:下列|哪項|哪一|是非|簡述|試解釋|試論|試詳細|說明過程|Explain|Which|True\s*or\s*False|Discuss)/i;
+    const optLineRe = /^(?:[A-Da-dＡ-Ｄａ-ｄ][\.\)、\s]|[（(][A-Da-dＡ-Ｄａ-ｄ][）)])/;
+    const ansLineRe = /^(?:答案|Answer|Ans)\s*[:：]/i;
 
     function flush() {
       const body = cur.join("\n").trim();
@@ -899,9 +928,52 @@ window.QDCS_SAMPLE_QUIZ = {
       cur = [];
     }
 
+    function normalizeOptLetter(ch) {
+      if (!ch) return "";
+      const code = ch.charCodeAt(0);
+      if (code >= 0xff21 && code <= 0xff3a) return String.fromCharCode(code - 0xfee0).toUpperCase();
+      if (code >= 0xff41 && code <= 0xff5a) return String.fromCharCode(code - 0xfee0).toUpperCase();
+      return ch.toUpperCase();
+    }
+
+    function curHasCompleteMcqBlock() {
+      const letters = new Set();
+      for (const l of cur) {
+        const t = l.trim();
+        const m = t.match(/^(?:([A-Da-dＡ-Ｄａ-ｄ])[\.\)、\s]|[（(]([A-Da-dＡ-Ｄａ-ｄ])[）)])/);
+        if (!m) continue;
+        letters.add(normalizeOptLetter(m[1] || m[2]));
+      }
+      return letters.has("A") && letters.has("B") && (letters.has("D") || letters.has("C") || letters.size >= 3);
+    }
+
+    let prevBlank = false;
     for (const line of lines) {
-      if (startRe.test(line.trim()) && cur.length) flush();
-      if (line.trim() || cur.length) cur.push(line);
+      const trimmed = line.trim();
+      if (!trimmed) {
+        prevBlank = true;
+        if (cur.length) cur.push(line);
+        continue;
+      }
+
+      let split = false;
+      if (cur.length) {
+        if (startRe.test(trimmed)) {
+          split = true;
+        } else if (prevBlank && stemCueRe.test(trimmed) && !optLineRe.test(trimmed) && !ansLineRe.test(trimmed)) {
+          split = true;
+        } else if (
+          curHasCompleteMcqBlock() &&
+          !optLineRe.test(trimmed) &&
+          !ansLineRe.test(trimmed)
+        ) {
+          split = true;
+        }
+      }
+
+      if (split) flush();
+      cur.push(line);
+      prevBlank = false;
     }
     flush();
 
@@ -918,30 +990,38 @@ window.QDCS_SAMPLE_QUIZ = {
     if (!lines.length) return null;
     let stemLine = lines[0].replace(/^(?:Q\s*\d+|第\s*\d+\s*題|\d+[\.\)、]|[（(]\d+[）)]|\d+\s*[\.\)])\s*/i, "");
     const rest = lines.slice(1);
-    const optRe = /^(?:[A-Da-d][\.\)\、\s]|[（(][A-Da-d][）)])\s*(.*)$/;
+    const optRe = /^(?:([A-Da-dＡ-Ｄａ-ｄ])[\.\)、\s]|[（(]([A-Da-dＡ-Ｄａ-ｄ])[）)])\s*(.*)$/;
     const options = [];
     const nonOpt = [];
     for (const r of rest) {
       const m = r.match(optRe);
-      if (m) options.push(m[1] || m[0].replace(optRe, "$1"));
+      if (m) options.push((m[3] || "").trim());
       else nonOpt.push(r);
     }
 
-    // answer line
     let answerHint = "";
     const ansLine = nonOpt.find((l) => /^(答案|Answer|Ans)\s*[:：]/i.test(l));
     if (ansLine) answerHint = ansLine.replace(/^(答案|Answer|Ans)\s*[:：]\s*/i, "").trim();
+    const bodyExtras = nonOpt.filter((l) => l !== ansLine);
 
+    function halfwidthLetter(ch) {
+      if (!ch) return "";
+      const code = ch.charCodeAt(0);
+      if (code >= 0xff21 && code <= 0xff3a) return String.fromCharCode(code - 0xfee0);
+      return ch;
+    }
+
+    // MCQ: ≥2 options A–D (incl. fullwidth)
     if (options.length >= 2) {
       let ansIdx = 0;
       if (answerHint) {
-        const letter = answerHint.trim().toUpperCase().charAt(0);
+        const letter = halfwidthLetter(answerHint.trim().charAt(0)).toUpperCase();
         if (letter >= "A" && letter <= "D") ansIdx = letter.charCodeAt(0) - 65;
       }
       return {
         id: uid("q"),
         type: "mcq",
-        stem: stemLine + (nonOpt.filter((l) => l !== ansLine).length ? "\n" + nonOpt.filter((l) => l !== ansLine).join("\n") : ""),
+        stem: stemLine + (bodyExtras.length ? "\n" + bodyExtras.join("\n") : ""),
         options: options.slice(0, 6),
         answer: Math.min(ansIdx, options.length - 1),
         marks: 1,
@@ -950,26 +1030,46 @@ window.QDCS_SAMPLE_QUIZ = {
     }
 
     // T/F
-    if (/[（(]?[Tt]rue\s*\/\s*[Ff]alse[）)]?|是非|對錯|T\s*\/\s*F/i.test(chunk) || /^(對|錯|是|非|True|False)\s*$/i.test(answerHint)) {
+    if (
+      /[（(]?[Tt]rue\s*\/\s*[Ff]alse[）)]?|是非|對錯|T\s*\/\s*F|True\s*or\s*False/i.test(chunk) ||
+      /^(對|錯|是|非|True|False|T|F)\s*$/i.test(answerHint)
+    ) {
       let ans = true;
-      if (/錯|非|False|F/i.test(answerHint)) ans = false;
-      return { id: uid("q"), type: "tf", stem: stemLine, answer: ans, marks: 1, explanation: "" };
+      const ah = answerHint.trim();
+      if (/^(錯|非|False|F)$/i.test(ah) || (/錯|非|False/i.test(ah) && !/^(對|是|True|T)$/i.test(ah))) {
+        ans = false;
+      }
+      return {
+        id: uid("q"),
+        type: "tf",
+        stem: stemLine + (bodyExtras.length ? "\n" + bodyExtras.join("\n") : ""),
+        answer: ans,
+        marks: 1,
+        explanation: ""
+      };
     }
 
-    // fill: blanks ____ or （　）
-    if (/_{2,}|（\s*）|\(\s*\)|【\s*】/.test(chunk)) {
+    // fill: blanks ____ or （　） / ( )
+    if (/_{2,}|（\s*）|（　）|\(\s*\)|【\s*】/.test(chunk)) {
       const fills = answerHint ? answerHint.split(/[/;,，、]/).map((s) => s.trim()).filter(Boolean) : [""];
-      return { id: uid("q"), type: "fill", stem: stemLine + (rest.length ? "\n" + rest.join("\n") : ""), answer: fills.length ? fills : [""], marks: 1, explanation: "" };
+      const fillStem = stemLine + (bodyExtras.length ? "\n" + bodyExtras.join("\n") : "");
+      return { id: uid("q"), type: "fill", stem: fillStem, answer: fills.length ? fills : [""], marks: 1, explanation: "" };
     }
 
-    const stemRest = stemLine + (nonOpt.filter((l) => l !== ansLine).length ? "\n" + nonOpt.filter((l) => l !== ansLine).join("\n") : "");
+    const stemRest = stemLine + (bodyExtras.length ? "\n" + bodyExtras.join("\n") : "");
     const kws = answerHint ? answerHint.split(/[/;,，、]/).map((s) => s.trim()).filter(Boolean) : [];
-    if (/論述|essay|討論|試論/i.test(chunk)) {
+    // Essay
+    if (/論述|essay|試論|討論/i.test(chunk)) {
       return { id: uid("q"), type: "essay", stem: stemRest, answerKeywords: kws, marks: 6, explanation: "" };
     }
-    if (/長答|long\s*answer|詳細說明|試解釋/i.test(chunk) || stemRest.length > 120) {
+    // Long answer
+    if (
+      /長答|long\s*answer|試詳細|試解釋|說明過程|詳細說明/i.test(chunk) ||
+      (stemRest.length > 100 && /解釋|說明/.test(stemRest))
+    ) {
       return { id: uid("q"), type: "la", stem: stemRest, answerKeywords: kws, marks: 4, explanation: "" };
     }
+    // Short answer (default)
     return { id: uid("q"), type: "sa", stem: stemRest, answerKeywords: kws, answer: kws.slice(0, 1), marks: 2, explanation: "" };
   }
 
@@ -1158,6 +1258,37 @@ window.QDCS_SAMPLE_QUIZ = {
     document.getElementById("builder-wrap").scrollIntoView({ behavior: "smooth" });
   }
 
+  function remapQuestionType(oldQ, newType) {
+    const nq = blankQuestion(newType);
+    nq.id = oldQ.id || nq.id;
+    nq.stem = oldQ.stem || "";
+    nq.marks = oldQ.marks != null ? oldQ.marks : nq.marks;
+    nq.explanation = oldQ.explanation || "";
+    if (newType === "mcq") {
+      if (Array.isArray(oldQ.options) && oldQ.options.length) nq.options = oldQ.options.slice();
+      if (typeof oldQ.answer === "number") nq.answer = oldQ.answer;
+    } else if (newType === "tf") {
+      if (typeof oldQ.answer === "boolean") nq.answer = oldQ.answer;
+      else if (/^(對|是|True|T)$/i.test(String(oldQ.answer || ""))) nq.answer = true;
+      else if (/^(錯|非|False|F)$/i.test(String(oldQ.answer || ""))) nq.answer = false;
+    } else if (newType === "fill") {
+      if (Array.isArray(oldQ.answer)) nq.answer = oldQ.answer.slice();
+      else if (Array.isArray(oldQ.answerKeywords) && oldQ.answerKeywords.length) nq.answer = oldQ.answerKeywords.slice();
+      else if (oldQ.answer != null && typeof oldQ.answer !== "boolean" && typeof oldQ.answer !== "number") nq.answer = [String(oldQ.answer)];
+    } else {
+      const kws =
+        (Array.isArray(oldQ.answerKeywords) && oldQ.answerKeywords.length && oldQ.answerKeywords.slice()) ||
+        (Array.isArray(oldQ.answer) && oldQ.answer.map(String)) ||
+        [];
+      nq.answerKeywords = kws;
+      if (newType === "sa") {
+        if (Array.isArray(oldQ.answer) && oldQ.answer.length && typeof oldQ.answer[0] === "string") nq.answer = oldQ.answer.slice();
+        else nq.answer = kws.slice(0, 1);
+      }
+    }
+    return nq;
+  }
+
   function renderBuilderQuestions() {
     const box = document.getElementById("builder-questions");
     if (!editQuiz.questions.length) {
@@ -1205,6 +1336,7 @@ window.QDCS_SAMPLE_QUIZ = {
         return `<div class="q-block" data-qi="${i}">
           <div class="q-head">
             <span class="q-num">Q${i + 1}</span>${typeTag}
+            <label>題型 <select data-qi="${i}" data-qtype>${Object.keys(TYPE_LABEL).map((t) => `<option value="${t}" ${q.type === t ? "selected" : ""}>${TYPE_LABEL[t]}</option>`).join("")}</select></label>
             <label>分數 <input type="number" min="0.5" step="0.5" style="width:64px" data-qi="${i}" data-marks value="${q.marks}" /></label>
             <button type="button" class="btn btn-sm btn-danger" data-rmq="${i}">刪題</button>
             <button type="button" class="btn btn-sm" data-upq="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
@@ -1264,6 +1396,16 @@ window.QDCS_SAMPLE_QUIZ = {
     box.querySelectorAll("[data-saans]").forEach((el) =>
       el.addEventListener("input", () => {
         editQuiz.questions[+el.dataset.qi].answer = el.value.split("/").map((s) => s.trim()).filter(Boolean);
+      })
+    );
+    box.querySelectorAll("[data-qtype]").forEach((el) =>
+      el.addEventListener("change", () => {
+        const i = +el.dataset.qi;
+        const newType = el.value;
+        const oldQ = editQuiz.questions[i];
+        if (!oldQ || oldQ.type === newType) return;
+        editQuiz.questions[i] = remapQuestionType(oldQ, newType);
+        renderBuilderQuestions();
       })
     );
     box.querySelectorAll("[data-rmq]").forEach((el) =>
@@ -1764,24 +1906,95 @@ window.QDCS_SAMPLE_QUIZ = {
       return;
     }
     const qs = parseImportText(text);
-    document.getElementById("import-preview").textContent =
-      "偵測到 " + qs.length + " 題：\n\n" +
-      qs
-        .map((q, i) => `Q${i + 1} [${q.type}] ${q.stem.slice(0, 80)}${q.stem.length > 80 ? "…" : ""}`)
-        .join("\n");
-    document.getElementById("btn-import-apply").disabled = !qs.length;
     runImport._parsed = qs;
+    const preview = document.getElementById("import-preview");
+    if (!qs.length) {
+      preview.innerHTML = '<p class="muted">未能解析出題目。請檢查編號或空行分隔。</p>';
+      document.getElementById("btn-import-apply").disabled = true;
+      return;
+    }
+    const counts = { mcq: 0, tf: 0, fill: 0, sa: 0, la: 0, essay: 0 };
+    qs.forEach((q) => {
+      if (counts[q.type] != null) counts[q.type]++;
+      else counts[q.type] = 1;
+    });
+    const summary =
+      "共 " + qs.length + " 題（" +
+      ["MCQ:" + counts.mcq, "T/F:" + counts.tf, "填充:" + counts.fill, "短答:" + counts.sa, "長答:" + counts.la, "論述:" + counts.essay].join(" · ") +
+      "）";
+
+    const cards = qs
+      .map((q, i) => {
+        const tag = '<span class="tag ' + q.type + '">' + escapeHtml(TYPE_LABEL[q.type] || q.type) + "</span>";
+        const stem = escapeHtml((q.stem || "").slice(0, 160)) + ((q.stem || "").length > 160 ? "…" : "");
+        let body = "";
+        if (q.type === "mcq") {
+          body =
+            '<ul class="ip-opts">' +
+            (q.options || [])
+              .map((o, oi) => {
+                const letter = String.fromCharCode(65 + oi);
+                const mark = Number(q.answer) === oi ? ' class="ok"' : "";
+                return "<li" + mark + ">" + letter + ". " + escapeHtml(o) + (Number(q.answer) === oi ? " ✓" : "") + "</li>";
+              })
+              .join("") +
+            "</ul>";
+        } else if (q.type === "tf") {
+          body = '<p class="ip-ans">答案：' + (q.answer ? "正確／True" : "錯誤／False") + "</p>";
+        } else if (q.type === "fill") {
+          const ans = Array.isArray(q.answer) ? q.answer.join(" / ") : q.answer || "";
+          body = '<p class="ip-ans">填充答案：' + escapeHtml(ans || "（未提供）") + "</p>";
+        } else {
+          const kws = (q.answerKeywords || []).join(" / ");
+          const exact = Array.isArray(q.answer) ? q.answer.join(" / ") : "";
+          body =
+            '<p class="ip-ans">' +
+            (exact ? "可接受：" + escapeHtml(exact) + (kws ? "；" : "") : "") +
+            (kws ? "關鍵詞：" + escapeHtml(kws) : exact || kws ? "" : "（無關鍵詞／待填）") +
+            "</p>";
+        }
+        return (
+          '<div class="ip-card">' +
+          '<div class="ip-head"><strong>Q' +
+          (i + 1) +
+          "</strong> " +
+          tag +
+          "</div>" +
+          '<p class="ip-stem">' +
+          stem +
+          "</p>" +
+          body +
+          "</div>"
+        );
+      })
+      .join("");
+
+    preview.innerHTML = '<p class="ip-sum">' + escapeHtml(summary) + "</p>" + cards;
+    document.getElementById("btn-import-apply").disabled = false;
   }
 
   function applyImport() {
     const qs = runImport._parsed || [];
     if (!qs.length) return;
-    if (!editQuiz) startEdit(null);
-    editQuiz.questions = editQuiz.questions.concat(qs);
-    renderBuilderQuestions();
+    startEdit(null);
+    editQuiz.questions = qs.slice();
+    let title = "";
+    const fname = typeof window !== "undefined" ? window._qdcsImportName : "";
+    if (fname) {
+      title = String(fname).replace(/\.[^.]+$/, "").trim();
+    }
+    if (!title && qs[0] && qs[0].stem) {
+      title = String(qs[0].stem).replace(/\s+/g, " ").trim().slice(0, 40);
+    }
+    if (!title) title = "匯入測驗 " + hkDateStamp();
+    editQuiz.title = title;
+    const titleEl = document.getElementById("bq-title");
+    if (titleEl) titleEl.value = title;
+    saveCurrentQuiz();
     showPanel("teacher");
     document.getElementById("builder-wrap").classList.remove("hidden");
-    toast("已匯入 " + qs.length + " 題（請檢查答案）");
+    renderBuilderQuestions();
+    toast("已建成測驗：" + qs.length + " 題（請檢查題型與答案）");
   }
 
   // ——— export / import JSON + Drive-friendly downloads (no browser OAuth) ———
@@ -2188,6 +2401,7 @@ window.QDCS_SAMPLE_QUIZ = {
     document.getElementById("import-file").onchange = (e) => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
+      window._qdcsImportName = f.name || "";
       const name = f.name || "";
       const type = f.type || "";
       if (/\.docx$/i.test(name)) loadDocx(f);

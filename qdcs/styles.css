@@ -312,14 +312,39 @@ table.scores th { background: var(--amber-bg); }
 .tag.sa { background: #e8f5e9; color: #2e7d32; }
 
 .import-preview {
-  max-height: 240px;
+  max-height: 420px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid var(--blue-border);
   border-radius: 6px;
   padding: 8px;
   font-size: .82rem;
-  white-space: pre-wrap;
+  white-space: normal;
+}
+.import-preview .ip-sum {
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+.import-preview .ip-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: #fafbfc;
+}
+.import-preview .ip-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.import-preview .ip-stem { margin: 6px 0 4px; }
+.import-preview .ip-opts {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+.import-preview .ip-opts .ok { color: var(--ok); font-weight: 600; }
+.import-preview .ip-ans { color: var(--muted); font-size: .8rem; margin: 4px 0 0; }
+.q-head select[data-qtype] {
+  font-size: .8rem;
+  max-width: 160px;
+  padding: 2px 4px;
 }
 
 .drive-hint {
