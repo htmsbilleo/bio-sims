@@ -28,7 +28,7 @@
 
   <div class="sync-note">
     <strong>發佈流程：</strong>老師在 teacher.html 儲存後按「發佈為目前測驗」→ 學生開 <code>student.html</code>（同一 <code>/qdcs/</code> 資料夾、同一瀏覽器）<strong>無需分享碼</strong>即載入。
-    成績寫入共用 localStorage；跨裝置用作答 JSON。匯入支援 TXT／MD／DOCX／PDF（PDF 文字層，非 OCR）。
+    成績寫入共用 localStorage；跨裝置用作答 JSON。匯入支援 TXT／MD／DOCX／PDF／圖片；PDF 先文字層，不足則掃描／圖片 OCR（Tesseract CDN，準確度有限）。
   </div>
 
   <div class="hub-grid">

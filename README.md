@@ -21,11 +21,12 @@ Named page: <https://htmsbilleo.github.io/bio-sims/hydrostatic-osmotic-pressure.
 
 ## QDCS-lite 測驗（老師／學生分頁）
 
-`qdcs/teacher.html` 是老師編輯版（出題、TXT／MD／DOCX／PDF 匯入、短答／長答／論述、成績、Drive 匯出）。儲存後按「發佈為目前測驗」，學生開同一資料夾的 `qdcs/student.html`（同一瀏覽器）無需分享碼即可載入；分享碼仍可作備用。`qdcs/index.html` 是入口，連結兩邊。根目錄 `qdcs-lite.html` 轉到該入口。資料存在瀏覽器 localStorage，不是伺服器成績庫。PDF 只抽文字層，不是 OCR。
+`qdcs/teacher.html` 是老師編輯版（出題、TXT／MD／DOCX／PDF／圖片匯入、掃描與圖片 OCR（Tesseract CDN）、短答／長答／論述、成績、Drive 匯出）。儲存後按「發佈為目前測驗」，學生開同一資料夾的 `qdcs/student.html`（同一瀏覽器）無需分享碼即可載入；分享碼仍可作備用。`qdcs/index.html` 是入口，連結兩邊，樣式在 `qdcs/styles.css`。根目錄 `qdcs-lite.html` 轉到該入口。資料存在瀏覽器 localStorage，不是伺服器成績庫。PDF 先抽文字層，不足才做掃描／圖片 OCR；OCR 準確度有限，首次需下載 CDN，最多約 12 頁。
 
-`qdcs/teacher.html` is the teacher editor (authoring, TXT/MD/DOCX/PDF import, short/long/essay items, scores, Drive export). After **Publish as current quiz**, students open `qdcs/student.html` in the same folder and same browser and load it without a share code; a code still works as a fallback. `qdcs/index.html` is the hub and links both pages. Root `qdcs-lite.html` redirects to that hub. Data stays in the browser’s localStorage, not on a server. PDF import reads the text layer only, not OCR.
+`qdcs/teacher.html` is the teacher editor (authoring, TXT/MD/DOCX/PDF/image import, scan and image OCR via the Tesseract CDN, short/long/essay items, scores, Drive export). After **Publish as current quiz**, students open `qdcs/student.html` in the same folder and same browser and load it without a share code; a code still works as a fallback. `qdcs/index.html` is the hub and links both pages; layout is `qdcs/styles.css`. Root `qdcs-lite.html` redirects to that hub. Data stays in the browser’s localStorage, not on a server. PDF import uses the text layer first and falls back to scan/image OCR when that layer is too thin. OCR accuracy is limited, the first run downloads the CDN script, and it covers about 12 pages.
 
 - 老師編輯版：<https://htmsbilleo.github.io/bio-sims/qdcs/teacher.html>
 - 學生作答版（已發佈則免碼；備用示範碼 BIODEMO）：<https://htmsbilleo.github.io/bio-sims/qdcs/student.html>
 - 入口：<https://htmsbilleo.github.io/bio-sims/qdcs/>
+- 樣式：<https://htmsbilleo.github.io/bio-sims/qdcs/styles.css>
 - 舊連結：<https://htmsbilleo.github.io/bio-sims/qdcs-lite.html>
