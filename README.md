@@ -19,11 +19,13 @@ Educational biology simulators in **relative units**. Values are for classroom e
 
 Named page: <https://htmsbilleo.github.io/bio-sims/hydrostatic-osmotic-pressure.html>
 
-## QDCS-lite 課堂測驗 / Classroom quiz
+## QDCS-lite 測驗（老師／學生分頁）
 
-`qdcs-lite.html` 與 `qdcs/index.html` 是同一頁（自含 HTML，無需建置）。香港中學科學課堂測驗：教師出題、分享碼作答、成績分析。資料存在瀏覽器 localStorage，不是伺服器成績庫。
+`qdcs/teacher.html` 是老師編輯版（出題、匯入、成績、Drive 匯出）。`qdcs/student.html` 是學生作答版（分享碼與自動評分）。`qdcs/index.html` 是入口，連結兩邊並轉到老師編輯版。根目錄 `qdcs-lite.html` 轉到該入口。資料存在瀏覽器 localStorage，不是伺服器成績庫。
 
-`qdcs-lite.html` and `qdcs/index.html` are the same self-contained page (no build step). HK secondary-science classroom quiz: teacher builder, share-code attempts, and score analytics. Data stays in the browser’s localStorage, not on a server.
+`qdcs/teacher.html` is the teacher editor (authoring, import, scores, Drive export). `qdcs/student.html` is the student answer page (share code and auto-marking). `qdcs/index.html` is the hub and sends people to the teacher editor. Root `qdcs-lite.html` redirects to that hub. Data stays in the browser’s localStorage, not on a server.
 
-- 根路徑：<https://htmsbilleo.github.io/bio-sims/qdcs-lite.html>
-- 資料夾入口（頁內分享連結以 `index.html#q=…` 表示，用這個網址較順）：<https://htmsbilleo.github.io/bio-sims/qdcs/>
+- 老師編輯版：<https://htmsbilleo.github.io/bio-sims/qdcs/teacher.html>
+- 學生作答版（示範碼 BIODEMO）：<https://htmsbilleo.github.io/bio-sims/qdcs/student.html#q=BIODEMO>
+- 入口：<https://htmsbilleo.github.io/bio-sims/qdcs/>
+- 舊連結：<https://htmsbilleo.github.io/bio-sims/qdcs-lite.html>
