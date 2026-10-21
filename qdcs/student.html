@@ -446,6 +446,36 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
   font-size: .88rem;
 }
 
+
+/* PDF / question figure thumbs */
+.q-figs, .bq-figs, .ip-figs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  align-items: flex-start;
+}
+.q-fig, .bq-fig, .ip-fig {
+  max-width: 100%;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+}
+.ip-fig { max-height: 96px; max-width: 140px; }
+.bq-fig { max-height: 160px; max-width: 240px; }
+.bq-fig-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.bq-fig-wrap .btn { align-self: stretch; }
+.bq-fig-note { font-size: .75rem; color: var(--muted); margin: 0 0 4px; }
+
 </style>
 </head>
 <body data-mode="student">
@@ -835,6 +865,335 @@ window.QDCS_SAMPLE_QUIZ = {
     return { score: 0, max: marks, correct: false };
   }
 
+  // ——— PDF figure extraction & association (MVP) ———
+  var QDCS_PDF_IMG_MAX_PER_PAGE = 3;
+  var QDCS_PDF_IMG_MAX_TOTAL = 12;
+  var QDCS_PDF_IMG_MIN_PX = 48;
+  var QDCS_PDF_IMG_MAX_SIDE = 900;
+  var QDCS_PDF_IMG_JPEG_Q = 0.72;
+  var QDCS_LS_WARN_BYTES = 1.5 * 1024 * 1024;
+
+  function isSafeImageDataUrl(url) {
+    return typeof url === "string" && /^data:image\/(png|jpe?g|webp);base64,/i.test(url);
+  }
+
+  function sanitizeQuestionImages(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(isSafeImageDataUrl).slice(0, QDCS_PDF_IMG_MAX_TOTAL);
+  }
+
+  function ensureQuestionImages(q) {
+    if (!q) return q;
+    q.images = sanitizeQuestionImages(q.images);
+    return q;
+  }
+
+  function renderSafeFigsHtml(images, imgClass, alt) {
+    const list = sanitizeQuestionImages(images);
+    if (!list.length) return "";
+    const cls = imgClass || "q-fig";
+    const a = alt || "題目附圖";
+    return (
+      '<div class="q-figs">' +
+      list
+        .map(function (src) {
+          return '<img class="' + cls + '" alt="' + a + '" src="' + src + '" />';
+        })
+        .join("") +
+      "</div>"
+    );
+  }
+
+  function pdfRawToRGBA(img) {
+    const w = img.width | 0;
+    const h = img.height | 0;
+    if (!w || !h || !img.data) return null;
+    const data = img.data;
+    const out = new Uint8ClampedArray(w * h * 4);
+    const kind = img.kind;
+    // pdf.js ImageKind: GRAYSCALE_1BPP=1, RGB_24BPP=2, RGBA_32BPP=3
+    if (kind === 3 || data.length === w * h * 4) {
+      out.set(data.subarray ? data.subarray(0, out.length) : data);
+      return out;
+    }
+    if (kind === 2 || data.length === w * h * 3) {
+      for (let i = 0, j = 0; j < out.length && i + 2 < data.length; i += 3, j += 4) {
+        out[j] = data[i];
+        out[j + 1] = data[i + 1];
+        out[j + 2] = data[i + 2];
+        out[j + 3] = 255;
+      }
+      return out;
+    }
+    if (kind === 1 || data.length === Math.ceil(w / 8) * h) {
+      let bit = 0;
+      let byteIdx = 0;
+      for (let y = 0; y < h; y++) {
+        bit = 0;
+        for (let x = 0; x < w; x++) {
+          const byte = data[byteIdx] || 0;
+          const on = (byte >> (7 - bit)) & 1;
+          const v = on ? 0 : 255;
+          const j = (y * w + x) * 4;
+          out[j] = out[j + 1] = out[j + 2] = v;
+          out[j + 3] = 255;
+          bit++;
+          if (bit === 8) {
+            bit = 0;
+            byteIdx++;
+          }
+        }
+        if (bit !== 0) byteIdx++;
+      }
+      return out;
+    }
+    if (data.length >= w * h && data.length < w * h * 3) {
+      for (let i = 0; i < w * h; i++) {
+        const v = data[i];
+        const j = i * 4;
+        out[j] = out[j + 1] = out[j + 2] = v;
+        out[j + 3] = 255;
+      }
+      return out;
+    }
+    return null;
+  }
+
+  function pdfImageToDataUrl(img) {
+    if (!img) return null;
+    try {
+      const w = (img.width || img.naturalWidth || 0) | 0;
+      const h = (img.height || img.naturalHeight || 0) | 0;
+      if (!w || !h) return null;
+      if (w < QDCS_PDF_IMG_MIN_PX || h < QDCS_PDF_IMG_MIN_PX) return null;
+
+      let dw = w;
+      let dh = h;
+      const longest = Math.max(w, h);
+      if (longest > QDCS_PDF_IMG_MAX_SIDE) {
+        const s = QDCS_PDF_IMG_MAX_SIDE / longest;
+        dw = Math.max(1, Math.round(w * s));
+        dh = Math.max(1, Math.round(h * s));
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = dw;
+      canvas.height = dh;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
+      if (typeof HTMLImageElement !== "undefined" && img instanceof HTMLImageElement) {
+        ctx.drawImage(img, 0, 0, dw, dh);
+      } else if (typeof ImageBitmap !== "undefined" && img instanceof ImageBitmap) {
+        ctx.drawImage(img, 0, 0, dw, dh);
+      } else if (img.bitmap) {
+        ctx.drawImage(img.bitmap, 0, 0, dw, dh);
+      } else if (img.data) {
+        const rgba = pdfRawToRGBA(img);
+        if (!rgba) return null;
+        const src = document.createElement("canvas");
+        src.width = w;
+        src.height = h;
+        const sctx = src.getContext("2d");
+        sctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+        ctx.drawImage(src, 0, 0, dw, dh);
+      } else {
+        return null;
+      }
+      return canvas.toDataURL("image/jpeg", QDCS_PDF_IMG_JPEG_Q);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function resolvePdfImgObj(page, name) {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(obj) {
+        if (done) return;
+        done = true;
+        resolve(obj || null);
+      }
+      try {
+        var sync = page.objs.get(name);
+        if (sync) return finish(sync);
+      } catch (e1) {}
+      try {
+        if (page.commonObjs) {
+          var sync2 = page.commonObjs.get(name);
+          if (sync2) return finish(sync2);
+        }
+      } catch (e2) {}
+      try {
+        page.objs.get(name, finish);
+      } catch (e3) {
+        try {
+          if (page.commonObjs) page.commonObjs.get(name, finish);
+          else finish(null);
+        } catch (e4) {
+          finish(null);
+        }
+      }
+      setTimeout(function () {
+        finish(null);
+      }, 800);
+    });
+  }
+
+  function pageLooksFigureHeavy(text, imageCount) {
+    if (imageCount > 0) return false;
+    const t = (text || "").replace(/\s+/g, "");
+    return t.length < 80;
+  }
+
+  async function extractPdfPageImages(page, pdfjs) {
+    const out = [];
+    const seen = {};
+    try {
+      const OPS = pdfjs.OPS || {};
+      const paintOps = {};
+      [
+        "paintImageXObject",
+        "paintJpegXObject",
+        "paintImageMaskXObject",
+        "paintInlineImageXObject",
+        "paintImageXObjectRepeat",
+        "paintImageMaskXObjectRepeat",
+        "paintImageMaskXObjectGroup"
+      ].forEach(function (k) {
+        if (OPS[k] != null) paintOps[OPS[k]] = k;
+      });
+      const opList = await page.getOperatorList();
+      const fnArray = opList.fnArray || [];
+      const argsArray = opList.argsArray || [];
+      for (let i = 0; i < fnArray.length; i++) {
+        if (out.length >= QDCS_PDF_IMG_MAX_PER_PAGE) break;
+        const fn = fnArray[i];
+        if (!paintOps[fn]) continue;
+        const args = argsArray[i] || [];
+        const name = args[0];
+        if (!name || typeof name !== "string") continue;
+        if (seen[name]) continue;
+        seen[name] = true;
+        const imgObj = await resolvePdfImgObj(page, name);
+        const dataUrl = pdfImageToDataUrl(imgObj);
+        if (dataUrl) out.push(dataUrl);
+      }
+    } catch (e) {
+      /* ignore extraction errors per page */
+    }
+    return out;
+  }
+
+  /**
+   * Associate page images to parsed questions.
+   * pages: [{ page, text, images: string[] }]
+   * Mutates questions' .images arrays; returns questions.
+   */
+  function associatePdfImagesToQuestions(questions, pages) {
+    if (!Array.isArray(questions) || !questions.length) return questions || [];
+    questions.forEach(function (q) {
+      if (!Array.isArray(q.images)) q.images = [];
+    });
+    if (!Array.isArray(pages) || !pages.length) return questions;
+
+    const assigned = {};
+    const leftovers = [];
+
+    function stemKey(stem) {
+      return String(stem || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function overlaps(stem, pageText) {
+      const s = stemKey(stem);
+      const p = String(pageText || "").replace(/\s+/g, " ");
+      if (!s || !p) return false;
+      // Full / head stem present on page (CJK stems are often < 20 chars)
+      const head = s.slice(0, 30);
+      if (head.length >= 6 && p.indexOf(head) !== -1) return true;
+      if (s.length >= 12) {
+        const minLen = Math.min(20, s.length);
+        for (let len = minLen; len <= Math.min(40, s.length); len++) {
+          if (p.indexOf(s.slice(0, len)) !== -1) return true;
+        }
+        // also try a mid-stem window ≥ 12 chars
+        for (let i = 0; i + 12 <= s.length; i++) {
+          if (p.indexOf(s.slice(i, i + 12)) !== -1) return true;
+        }
+      }
+      return false;
+    }
+
+    pages.forEach(function (pg) {
+      const imgs = sanitizeQuestionImages(pg.images || []);
+      if (!imgs.length) return;
+      const matches = [];
+      questions.forEach(function (q, qi) {
+        if (overlaps(q.stem, pg.text)) matches.push(qi);
+      });
+      if (!matches.length) {
+        leftovers.push({ page: pg.page, images: imgs });
+        return;
+      }
+      if (matches.length === 1) {
+        const qi = matches[0];
+        questions[qi].images = sanitizeQuestionImages((questions[qi].images || []).concat(imgs));
+        if (!questions[qi].imageNotes) questions[qi].imageNotes = "來自 PDF 匯入";
+        assigned[qi] = true;
+      } else {
+        imgs.forEach(function (img, ii) {
+          const qi = matches[ii % matches.length];
+          questions[qi].images = sanitizeQuestionImages((questions[qi].images || []).concat([img]));
+          if (!questions[qi].imageNotes) questions[qi].imageNotes = "來自 PDF 匯入";
+          assigned[qi] = true;
+        });
+      }
+    });
+
+    // Fallback: leftover page images → nearest question by order (page ≈ question index)
+    leftovers.forEach(function (lo) {
+      const approx = Math.min(questions.length - 1, Math.max(0, (lo.page || 1) - 1));
+      let target = approx;
+      // prefer unassigned nearby
+      if (assigned[target]) {
+        for (let d = 1; d < questions.length; d++) {
+          if (approx - d >= 0 && !assigned[approx - d]) {
+            target = approx - d;
+            break;
+          }
+          if (approx + d < questions.length && !assigned[approx + d]) {
+            target = approx + d;
+            break;
+          }
+        }
+      }
+      questions[target].images = sanitizeQuestionImages((questions[target].images || []).concat(lo.images || []));
+      if (!questions[target].imageNotes) questions[target].imageNotes = "來自 PDF 匯入";
+      assigned[target] = true;
+    });
+
+    questions.forEach(ensureQuestionImages);
+    return questions;
+  }
+
+  function estimateQuizStorageBytes(quiz) {
+    try {
+      return JSON.stringify(quiz || {}).length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function warnIfQuizLarge(quiz) {
+    const n = estimateQuizStorageBytes(quiz);
+    if (n >= QDCS_LS_WARN_BYTES) {
+      toast("警告：測驗資料約 " + Math.round(n / 1024) + " KB，localStorage 可能偏大（仍已儲存）");
+    }
+  }
+
+
   // ——— import heuristics ———
   function parseImportText(text) {
     const lines = text.replace(/\r\n/g, "\n").split("\n");
@@ -894,7 +1253,8 @@ window.QDCS_SAMPLE_QUIZ = {
         options: options.slice(0, 6),
         answer: Math.min(ansIdx, options.length - 1),
         marks: 1,
-        explanation: ""
+        explanation: "",
+        images: []
       };
     }
 
@@ -902,24 +1262,24 @@ window.QDCS_SAMPLE_QUIZ = {
     if (/[（(]?[Tt]rue\s*\/\s*[Ff]alse[）)]?|是非|對錯|T\s*\/\s*F/i.test(chunk) || /^(對|錯|是|非|True|False)\s*$/i.test(answerHint)) {
       let ans = true;
       if (/錯|非|False|F/i.test(answerHint)) ans = false;
-      return { id: uid("q"), type: "tf", stem: stemLine, answer: ans, marks: 1, explanation: "" };
+      return { id: uid("q"), type: "tf", stem: stemLine, answer: ans, marks: 1, explanation: "", images: [] };
     }
 
     // fill: blanks ____ or （　）
     if (/_{2,}|（\s*）|\(\s*\)|【\s*】/.test(chunk)) {
       const fills = answerHint ? answerHint.split(/[/;,，、]/).map((s) => s.trim()).filter(Boolean) : [""];
-      return { id: uid("q"), type: "fill", stem: stemLine + (rest.length ? "\n" + rest.join("\n") : ""), answer: fills.length ? fills : [""], marks: 1, explanation: "" };
+      return { id: uid("q"), type: "fill", stem: stemLine + (rest.length ? "\n" + rest.join("\n") : ""), answer: fills.length ? fills : [""], marks: 1, explanation: "", images: [] };
     }
 
     const stemRest = stemLine + (nonOpt.filter((l) => l !== ansLine).length ? "\n" + nonOpt.filter((l) => l !== ansLine).join("\n") : "");
     const kws = answerHint ? answerHint.split(/[/;,，、]/).map((s) => s.trim()).filter(Boolean) : [];
     if (/論述|essay|討論|試論/i.test(chunk)) {
-      return { id: uid("q"), type: "essay", stem: stemRest, answerKeywords: kws, marks: 6, explanation: "" };
+      return { id: uid("q"), type: "essay", stem: stemRest, answerKeywords: kws, marks: 6, explanation: "", images: [] };
     }
     if (/長答|long\s*answer|詳細說明|試解釋/i.test(chunk) || stemRest.length > 120) {
-      return { id: uid("q"), type: "la", stem: stemRest, answerKeywords: kws, marks: 4, explanation: "" };
+      return { id: uid("q"), type: "la", stem: stemRest, answerKeywords: kws, marks: 4, explanation: "", images: [] };
     }
-    return { id: uid("q"), type: "sa", stem: stemRest, answerKeywords: kws, answer: kws.slice(0, 1), marks: 2, explanation: "" };
+    return { id: uid("q"), type: "sa", stem: stemRest, answerKeywords: kws, answer: kws.slice(0, 1), marks: 2, explanation: "", images: [] };
   }
 
   // ——— builder state ———
@@ -939,7 +1299,7 @@ window.QDCS_SAMPLE_QUIZ = {
 
   function blankQuestion(type) {
     type = type || "mcq";
-    const base = { id: uid("q"), type, stem: "", marks: 1, explanation: "" };
+    const base = { id: uid("q"), type, stem: "", marks: 1, explanation: "", images: [] };
     if (type === "mcq") {
       base.options = ["", "", "", ""];
       base.answer = 0;
@@ -1107,6 +1467,31 @@ window.QDCS_SAMPLE_QUIZ = {
     document.getElementById("builder-wrap").scrollIntoView({ behavior: "smooth" });
   }
 
+  function renderBuilderFigs(q, i) {
+    const imgs = sanitizeQuestionImages(q && q.images);
+    if (!imgs.length) return "";
+    const note =
+      '<p class="bq-fig-note">' +
+      escapeHtml((q && q.imageNotes) || "來自 PDF 匯入") +
+      "</p>";
+    const thumbs = imgs
+      .map(function (src, ii) {
+        return (
+          '<div class="bq-fig-wrap">' +
+          '<img class="bq-fig" alt="題目附圖" src="' +
+          src +
+          '" />' +
+          '<button type="button" class="btn btn-sm" data-rmimg="' +
+          i +
+          '" data-imgi="' +
+          ii +
+          '">移除圖</button></div>'
+        );
+      })
+      .join("");
+    return '<div class="bq-figs">' + note + thumbs + "</div>";
+  }
+
   function renderBuilderQuestions() {
     const box = document.getElementById("builder-questions");
     if (!editQuiz.questions.length) {
@@ -1162,6 +1547,7 @@ window.QDCS_SAMPLE_QUIZ = {
           <label class="field">題幹
             <textarea data-qi="${i}" data-stem rows="2">${escapeHtml(q.stem)}</textarea>
           </label>
+          ${renderBuilderFigs(q, i)}
           ${body}
           <label class="field">解析（選填）
             <input type="text" data-qi="${i}" data-expl value="${escapeHtml(q.explanation || "")}" />
@@ -1246,6 +1632,17 @@ window.QDCS_SAMPLE_QUIZ = {
         const q = editQuiz.questions[+el.dataset.addopt];
         q.options = q.options || [];
         q.options.push("");
+        renderBuilderQuestions();
+      })
+    );
+    box.querySelectorAll("[data-rmimg]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const qi = +el.dataset.rmimg;
+        const ii = +el.dataset.imgi;
+        const q = editQuiz.questions[qi];
+        if (!q || !Array.isArray(q.images)) return;
+        q.images.splice(ii, 1);
+        if (!q.images.length) delete q.imageNotes;
         renderBuilderQuestions();
       })
     );
@@ -1405,6 +1802,7 @@ window.QDCS_SAMPLE_QUIZ = {
             <span class="tag ${q.type}">${TYPE_LABEL[q.type]}</span>
             <span class="muted">（${q.marks} 分）</span>
           </div>
+          ${renderSafeFigsHtml(q.images, "q-fig", "題目附圖")}
           ${inputs}
         </div>`;
       })
@@ -1712,11 +2110,16 @@ window.QDCS_SAMPLE_QUIZ = {
       toast("請先貼上文字或載入檔案");
       return;
     }
-    const qs = parseImportText(text);
+    let qs = parseImportText(text);
+    qs.forEach(ensureQuestionImages);
+    if (window._qdcsPdfImport && Array.isArray(window._qdcsPdfImport.pages)) {
+      associatePdfImagesToQuestions(qs, window._qdcsPdfImport.pages);
+    }
+    const imgN = qs.reduce((n, q) => n + (Array.isArray(q.images) ? q.images.length : 0), 0);
     document.getElementById("import-preview").textContent =
-      "偵測到 " + qs.length + " 題：\n\n" +
+      "偵測到 " + qs.length + " 題" + (imgN ? "（附圖 " + imgN + " 張）" : "") + "：\n\n" +
       qs
-        .map((q, i) => `Q${i + 1} [${q.type}] ${q.stem.slice(0, 80)}${q.stem.length > 80 ? "…" : ""}`)
+        .map((q, i) => `Q${i + 1} [${q.type}] ${q.stem.slice(0, 80)}${q.stem.length > 80 ? "…" : ""}${Array.isArray(q.images) && q.images.length ? " [圖x" + q.images.length + "]" : ""}`)
         .join("\n");
     document.getElementById("btn-import-apply").disabled = !qs.length;
     runImport._parsed = qs;
@@ -1952,28 +2355,98 @@ window.QDCS_SAMPLE_QUIZ = {
   function loadPdf(file) {
     const reader = new FileReader();
     reader.onload = () => {
+      const data = reader.result;
       ensurePdfJs()
-        .then((pdfjs) => pdfjs.getDocument({ data: reader.result }).promise)
+        .then((pdfjs) => pdfjs.getDocument({ data: data }).promise)
         .then(async (pdf) => {
-          const parts = [];
+          const maxPages = Math.min(pdf.numPages, 12);
+          const pageInfos = [];
+          let totalImgs = 0;
+          setImportStatus("正在擷取 PDF 文字層與內嵌圖…");
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const tc = await page.getTextContent();
             const line = tc.items.map((it) => it.str).join(" ");
-            parts.push(line);
+            let images = [];
+            if (totalImgs < QDCS_PDF_IMG_MAX_TOTAL) {
+              images = await extractPdfPageImages(page, pdfjs);
+              const room = QDCS_PDF_IMG_MAX_TOTAL - totalImgs;
+              if (images.length > room) images = images.slice(0, room);
+              totalImgs += images.length;
+            }
+            pageInfos.push({ page: i, text: line, images: images });
           }
-          const text = parts.join("\n\n").replace(/[ \t]+/g, " ").trim();
+          let text = pageInfos.map((p) => p.text).join("\n\n").replace(/[ \t]+/g, " ").trim();
+          let usedOcr = false;
+
+          if (textLooksSparse(text)) {
+            usedOcr = true;
+            setImportStatus(
+              "文字層不足，啟用掃描／圖片 OCR（Tesseract CDN；最多 " + maxPages + " 頁）…"
+            );
+            const ocrParts = [];
+            for (let i = 1; i <= maxPages; i++) {
+              const page = await pdf.getPage(i);
+              const canvas = await renderPdfPageToCanvas(page, 2);
+              const pageText = await ocrCanvasOrImage(canvas, "第 " + i + "/" + maxPages + " 頁 OCR");
+              ocrParts.push(pageText.trim());
+              if (pageInfos[i - 1]) pageInfos[i - 1].text = pageText.trim() || pageInfos[i - 1].text;
+              if (
+                pageInfos[i - 1] &&
+                (!pageInfos[i - 1].images || !pageInfos[i - 1].images.length) &&
+                pageLooksFigureHeavy(pageInfos[i - 1].text, 0) &&
+                totalImgs < QDCS_PDF_IMG_MAX_TOTAL
+              ) {
+                try {
+                  let dw = canvas.width;
+                  let dh = canvas.height;
+                  const longest = Math.max(dw, dh);
+                  let shot = canvas;
+                  if (longest > QDCS_PDF_IMG_MAX_SIDE) {
+                    const s = QDCS_PDF_IMG_MAX_SIDE / longest;
+                    const c2 = document.createElement("canvas");
+                    c2.width = Math.max(1, Math.round(dw * s));
+                    c2.height = Math.max(1, Math.round(dh * s));
+                    c2.getContext("2d").drawImage(canvas, 0, 0, c2.width, c2.height);
+                    shot = c2;
+                  }
+                  if (shot.width >= QDCS_PDF_IMG_MIN_PX && shot.height >= QDCS_PDF_IMG_MIN_PX) {
+                    const url = shot.toDataURL("image/jpeg", QDCS_PDF_IMG_JPEG_Q);
+                    if (isSafeImageDataUrl(url)) {
+                      pageInfos[i - 1].images = [url];
+                      totalImgs += 1;
+                    }
+                  }
+                } catch (eShot) {}
+              }
+            }
+            text = ocrParts.filter(Boolean).join("\n\n").trim();
+          }
+
+          window._qdcsPdfImport = { pages: pageInfos, totalImages: totalImgs };
           document.getElementById("import-text").value = text || "";
-          if (!text) toast("PDF 沒有可擷取文字（可能是掃描圖，本工具不做 OCR）");
-          else toast("已擷取 PDF 文字層（非 OCR）· " + pdf.numPages + " 頁");
-          runImport();
+          if (!text) {
+            setImportStatus("未辨識到文字。請改用更清晰掃描或手動貼上。" + (totalImgs ? "（已擷取 " + totalImgs + " 張內嵌圖）" : ""));
+          } else {
+            const imgNote = totalImgs ? " · 內嵌圖 " + totalImgs + " 張（簡化對位）" : " · 無內嵌圖";
+            setImportStatus(
+              (usedOcr
+                ? "掃描／圖片 OCR 完成（簡化、準確度有限）· 已處理 " + maxPages + "/" + pdf.numPages + " 頁"
+                : "已擷取 PDF 文字層（非 OCR）· " + pdf.numPages + " 頁") +
+                imgNote +
+                " — 請檢查後再解析"
+            );
+            runImport();
+          }
         })
-        .catch((e) => toast("無法讀取 PDF：" + (e && e.message ? e.message : "請改貼上文字")));
+        .catch((e) => {
+          setImportStatus("無法讀取 PDF：" + (e && e.message ? e.message : "請改貼上文字"));
+        });
     };
     reader.readAsArrayBuffer(file);
   }
 
-  // ——— init ———
+
   function init() {
     ensureSample();
 
@@ -2023,8 +2496,10 @@ window.QDCS_SAMPLE_QUIZ = {
     document.getElementById("import-file").onchange = (e) => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
+      const isPdf = /\.pdf$/i.test(f.name);
+      if (!isPdf) window._qdcsPdfImport = null;
       if (/\.docx$/i.test(f.name)) loadDocx(f);
-      else if (/\.pdf$/i.test(f.name)) loadPdf(f);
+      else if (isPdf) loadPdf(f);
       else {
         const reader = new FileReader();
         reader.onload = () => {

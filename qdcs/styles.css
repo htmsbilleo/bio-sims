@@ -341,6 +341,36 @@ table.scores th { background: var(--amber-bg); }
 }
 .import-preview .ip-opts .ok { color: var(--ok); font-weight: 600; }
 .import-preview .ip-ans { color: var(--muted); font-size: .8rem; margin: 4px 0 0; }
+
+/* PDF / question figure thumbs */
+.q-figs, .bq-figs, .ip-figs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  align-items: flex-start;
+}
+.q-fig, .bq-fig, .ip-fig {
+  max-width: 100%;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+}
+.ip-fig { max-height: 96px; max-width: 140px; }
+.bq-fig { max-height: 160px; max-width: 240px; }
+.bq-fig-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.bq-fig-wrap .btn { align-self: stretch; }
+.bq-fig-note { font-size: .75rem; color: var(--muted); margin: 0 0 4px; }
+
 .q-head select[data-qtype] {
   font-size: .8rem;
   max-width: 160px;
