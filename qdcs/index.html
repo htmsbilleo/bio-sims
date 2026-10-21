@@ -3,18 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="refresh" content="0; url=teacher.html">
-<title>QDCS-lite → 老師編輯版</title>
-<style>body{font-family:sans-serif;max-width:520px;margin:40px auto;padding:16px;line-height:1.5}
-a.card{display:block;padding:14px;margin:10px 0;border-radius:10px;text-decoration:none;color:#1a2332;border:1px solid #ddd;border-left:5px solid}
-a.t{border-left-color:#1565c0;background:#e8f1fb} a.s{border-left-color:#2e7d32;background:#e8f5e9}
-</style>
+<title>QDCS-lite｜課堂測驗 — 請選擇老師／學生版</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>QDCS-lite</h1>
-<p>請選擇版本（亦可直接開下列連結）：</p>
-<a class="card t" href="teacher.html"><strong>老師編輯版</strong><br>出題／匯入／成績／Drive</a>
-<a class="card s" href="student.html"><strong>學生作答版</strong><br>分享碼作答與自動評分</a>
-<p style="color:#666;font-size:.9rem">若未自動跳轉，請按「老師編輯版」。</p>
+<div class="wrap">
+  <div class="cover-hero">
+    <h1>QDCS-lite 課堂測驗</h1>
+    <p class="sub">香港中學科學 · 老師出題／學生作答分流 · 本機儲存 · 配合流體／滲透壓模擬器</p>
+    <div class="pills">
+      <span class="pill">藍 · 教師出題</span>
+      <span class="pill">綠 · 學生作答</span>
+      <span class="pill">琥珀 · 成績同步</span>
+      <span class="pill">紫 · 模擬器／Drive</span>
+    </div>
+  </div>
+
+  <div class="legend" aria-label="顏色圖例">
+    <span><i class="blue"></i>教師出題（藍）</span>
+    <span><i class="green"></i>學生作答（綠）</span>
+    <span><i class="amber"></i>成績分析（琥珀）</span>
+    <span><i class="purple"></i>模擬器／Drive（紫）</span>
+  </div>
+
+  <div class="sync-note">
+    <strong>成績如何互通：</strong>
+    老師與學生須開啟<strong>同一資料夾／同源網址</strong>（例如 GitHub Pages 的 <code>/qdcs/</code>）並用<strong>同一瀏覽器設定檔</strong>，提交後成績會寫入共用的 <code>localStorage</code>，老師「成績分析」即可看見。
+    若換電腦／換瀏覽器：學生提交後「複製作答 JSON」或下載檔案，老師在成績區「匯入作答 JSON」。
+  </div>
+
+  <div class="hub-grid">
+    <a class="hub-card teacher" href="teacher.html">
+      <h2><span class="dot blue"></span> 老師編輯版</h2>
+      <p>建卷、簡化匯入、成績分析、Drive 下載、產生學生連結。可匯入學生作答 JSON。</p>
+      <span class="go">進入老師版 →</span>
+    </a>
+    <a class="hub-card student" href="student.html">
+      <h2><span class="dot green"></span> 學生作答版</h2>
+      <p>版面與老師版相同色卡結構；只能作答，不能改題。提交後自動評分並同步本機成績。</p>
+      <span class="go">進入學生版 →</span>
+    </a>
+  </div>
+
+  <div class="card tone-purple" style="margin-top:14px">
+    <h2><span class="dot purple"></span>快速開始</h2>
+    <ol class="muted" style="margin:0;padding-left:1.2em">
+      <li>老師開 <code>teacher.html</code> → 載入示範卷 <strong>BIODEMO</strong> 或自建卷</li>
+      <li>複製學生連結：<code>student.html#q=分享碼</code></li>
+      <li>學生作答提交 → 老師重新整理「成績分析」</li>
+    </ol>
+    <div class="flex-gap" style="margin-top:10px">
+      <a class="btn btn-sm btn-purple" href="../hydrostatic-osmotic-pressure.html" target="_blank" rel="noopener">開啟模擬器</a>
+      <a class="btn btn-sm" href="student.html#q=BIODEMO">試做 BIODEMO</a>
+    </div>
+  </div>
+
+  <footer class="app-foot">QDCS-lite · 非正式 QDCS · 無瀏覽器 Google OAuth · 詳見 README.md</footer>
+</div>
 </body>
 </html>

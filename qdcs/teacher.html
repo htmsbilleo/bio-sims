@@ -366,29 +366,70 @@ footer.app-foot {
   text-align: center;
 }
 
-
-/* Split mode extras */
-.hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-@media (max-width: 640px) { .hub-grid { grid-template-columns: 1fr; } }
-.hub-card {
-  display: block; text-decoration: none; color: inherit;
-  border-radius: 12px; padding: 18px 16px; border: 1px solid var(--border);
-  border-left-width: 6px; background: #fff; box-shadow: var(--shadow);
-  transition: transform .12s, box-shadow .12s;
+/* ——— Cover / hub landing ——— */
+.cover-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 28px 22px 24px;
+  margin-bottom: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #0d3d4f 0%, #1565c0 42%, #2e7d32 100%);
+  box-shadow: 0 8px 28px rgba(21, 101, 192, .25);
 }
-.hub-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(26,35,50,.1); }
-.hub-card.teacher { border-left-color: var(--blue); background: linear-gradient(90deg, var(--blue-bg), #fff 55%); }
-.hub-card.student { border-left-color: var(--green); background: linear-gradient(90deg, var(--green-bg), #fff 55%); }
-.hub-card h2 { margin: 0 0 6px; font-size: 1.15rem; }
-.hub-card.teacher h2 { color: var(--blue); }
-.hub-card.student h2 { color: var(--green); }
-.hub-card p { margin: 0; color: var(--muted); font-size: .88rem; }
-body[data-mode="student"] .wrap { max-width: 720px; }
-body[data-mode="student"] header.app-header { border-left: 5px solid var(--green); }
-body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue); }
+.cover-hero::after {
+  content: "";
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+}
+.cover-hero h1 { margin: 0 0 8px; font-size: 1.55rem; position: relative; z-index: 1; }
+.cover-hero .sub { margin: 0; opacity: .95; font-size: .92rem; position: relative; z-index: 1; max-width: 36em; }
+.cover-hero .pills { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; position: relative; z-index: 1; }
+.cover-hero .pill {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .hub-grid { grid-template-columns: 1fr; } }
+a.hub-card {
+  display: block; text-decoration: none; color: inherit;
+  border-radius: 14px; padding: 20px 16px;
+  border: 1px solid var(--border); border-left-width: 6px;
+  background: #fff; box-shadow: var(--shadow);
+  transition: transform .15s, box-shadow .15s;
+}
+a.hub-card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(26,35,50,.12); }
+a.hub-card.teacher { border-left-color: var(--blue); background: linear-gradient(135deg, var(--blue-bg), #fff 60%); }
+a.hub-card.student { border-left-color: var(--green); background: linear-gradient(135deg, var(--green-bg), #fff 60%); }
+a.hub-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
+a.hub-card.teacher h2 { color: var(--blue); }
+a.hub-card.student h2 { color: var(--green); }
+a.hub-card p { margin: 0; color: var(--muted); font-size: .88rem; }
+a.hub-card .go { display: inline-block; margin-top: 12px; font-weight: 700; font-size: .85rem; }
+a.hub-card.teacher .go { color: var(--blue); }
+a.hub-card.student .go { color: var(--green); }
+.sync-note {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-left: 4px solid var(--amber);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: .84rem;
+  color: #5c4a1a;
+  margin-bottom: 12px;
+}
 .mode-pill { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
 .mode-pill.teacher { background: var(--blue-bg); color: var(--blue); }
 .mode-pill.student { background: var(--green-bg); color: var(--green); }
+body[data-mode="student"] header.app-header { border-left: 5px solid var(--green); }
+body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue); }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
@@ -398,7 +439,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
 
   <header class="app-header">
     <h1>QDCS-lite 老師編輯版<span class="mode-pill teacher">教師</span></h1>
-    <p class="sub">建卷 · 匯入 · 成績 · Drive 匯出 · 產生學生連結（學生請開 student.html）</p>
+    <p class="sub">建卷 · 匯入 · 成績 · Drive · 產生學生連結 · <a href="index.html">封面</a> · <a href="student.html">學生版</a></p>
   </header>
   
   <div class="legend" aria-label="顏色圖例">
@@ -407,7 +448,11 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     <span><i class="amber"></i>成績分析（琥珀）</span>
     <span><i class="purple"></i>模擬器／Drive（紫）</span>
   </div>
-  <p class="assumption">資料存本機 localStorage。學生連結指向 <code>student.html#q=分享碼</code>（須同一瀏覽器／設定檔，或先匯出 JSON 給學生裝置匯入）。靜態頁無 Google Drive OAuth。</p>
+  
+  <div class="sync-note">
+    <strong>成績同步：</strong>與學生版須同一資料夾／同源（如 Pages <code>/qdcs/</code>）＋同一瀏覽器，提交後本頁「成績分析」可見。
+    跨裝置：請學生複製／下載作答 JSON，於此區<strong>匯入作答 JSON</strong>。
+  </div>
   <nav class="nav-bar" aria-label="教師選單">
     <button type="button" class="nav-btn active" data-panel="teacher">教師出題</button>
     <button type="button" class="nav-btn" data-panel="import">簡化匯入</button>
@@ -418,11 +463,11 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
   <section id="panel-teacher" class="panel active">
     <div class="card tone-blue">
       <h2><span class="dot blue"></span>教師出題 · Quiz builder</h2>
-      <p class="muted">MCQ／T/F／填充／短答 · 設答案與分數 · 產生分享碼給學生版</p>
+      <p class="muted">MCQ／T/F／填充／短答 · 設答案與分數 · 儲存後產生 <code>student.html#q=碼</code></p>
       <div class="flex-gap">
         <button type="button" class="btn btn-primary" id="btn-new-quiz">＋ 新建</button>
-        <button type="button" class="btn btn-sm" id="btn-export-json">下載 JSON</button>
-        <label class="btn btn-sm" style="cursor:pointer;margin:0">匯入 JSON
+        <button type="button" class="btn btn-sm" id="btn-export-json">下載測驗 JSON</button>
+        <label class="btn btn-sm" style="cursor:pointer;margin:0">匯入測驗 JSON
           <input type="file" id="import-json-file" accept=".json,application/json" hidden>
         </label>
       </div>
@@ -470,10 +515,15 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
   <section id="panel-analytics" class="panel">
     <div class="card tone-amber">
       <h2><span class="dot amber"></span>成績分析</h2>
+      <p class="muted">讀取本機 <code>qdcs_lite_attempts_v1</code>（與學生版共用）。跨裝置請匯入學生作答 JSON。</p>
       <div class="flex-gap">
         <select id="analytics-code" class="field-select" style="width:auto;min-width:200px"></select>
         <button type="button" class="btn btn-amber" id="btn-refresh-analytics">重新整理</button>
-        <button type="button" class="btn btn-sm" id="btn-export-csv-analytics">下載成績 CSV</button>
+        <button type="button" class="btn btn-sm" id="btn-export-csv-analytics">下載 CSV</button>
+        <button type="button" class="btn btn-sm" id="btn-export-attempts-json">匯出作答 JSON</button>
+        <label class="btn btn-sm" style="cursor:pointer;margin:0">匯入作答 JSON
+          <input type="file" id="import-attempts-file" accept=".json,application/json" hidden>
+        </label>
       </div>
       <div id="analytics-out" style="margin-top:10px"></div>
     </div>
@@ -489,7 +539,7 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     </div>
     <div class="card tone-purple">
       <h2><span class="dot purple"></span>匯出到 Google Drive</h2>
-      <p class="muted">靜態頁<strong>不能</strong>直連 Drive。請下載後上傳，或請助手上傳 <code>drive-export/</code>。</p>
+      <p class="muted">靜態頁不能直連 Drive。下載後上傳，或請助手上傳 <code>drive-export/</code>。</p>
       <label class="field">選擇測驗 <select id="drive-export-code" class="field-select"></select></label>
       <div class="flex-gap">
         <button type="button" class="btn btn-purple" id="btn-drive-json">下載測驗 JSON</button>
@@ -500,13 +550,11 @@ body[data-mode="teacher"] header.app-header { border-left: 5px solid var(--blue)
     </div>
   </section>
 
-  <!-- stubs so app.js querySelector does not throw -->
   <section id="panel-home" class="panel hidden"></section>
   <section id="panel-student" class="panel hidden"><div id="student-root"></div></section>
   <input type="hidden" id="join-code" />
   <button type="button" id="btn-join" class="hidden"></button>
-
-  <footer class="app-foot">老師編輯版 · 學生請使用 <a href="student.html">student.html</a> · 藍出題／琥珀成績／紫 Drive</footer>
+  <footer class="app-foot">老師編輯版 · 學生連結：<code>student.html#q=碼</code> · <a href="index.html">返回封面</a></footer>
 
 </div>
 <div id="toast" class="toast" role="status"></div>
@@ -899,6 +947,7 @@ window.QDCS_SAMPLE_QUIZ = {
   function renderHome() {
     const map = loadQuizzes();
     const list = document.getElementById("home-quiz-list");
+    if (!list) return;
     const codes = Object.keys(map);
     if (!codes.length) {
       list.innerHTML = '<p class="muted">尚未有測驗。請到「教師建卷」建立，或載入示範卷 BIODEMO。</p>';
@@ -1164,13 +1213,24 @@ window.QDCS_SAMPLE_QUIZ = {
     root.innerHTML = `
       <div class="card tone-green">
         <h2><span class="dot green"></span>${escapeHtml(quiz.title)}</h2>
-        <p class="muted">${escapeHtml(quiz.subject || "")} · 碼 ${escapeHtml(code)} · 滿分 ${totalMarks}</p>
+        <p class="muted">${escapeHtml(quiz.subject || "")} · 分享碼 <code>${escapeHtml(code)}</code> · 滿分 ${totalMarks}</p>
         <p>${escapeHtml(quiz.description || "")}</p>
-        <p class="muted"><a href="../hydrostatic-osmotic-pressure.html" target="_blank" rel="noopener">相關模擬器（紫區亦可開）</a></p>
+        <p class="muted" style="margin:0">題目為唯讀；請作答後提交。不可修改題目內容。</p>
+      </div>
+      <div class="card tone-amber">
+        <h2><span class="dot amber"></span>成績如何給老師？</h2>
+        <p class="muted" style="margin:0">同一網站資料夾／同源（例如 Pages 的 <code>/qdcs/</code>）並用<strong>同一瀏覽器</strong>時，提交後老師在「成績分析」可即時看到。跨裝置請提交後<strong>複製／下載作答 JSON</strong>交給老師匯入。</p>
+      </div>
+      <div class="card tone-purple">
+        <h2><span class="dot purple"></span>相關模擬器</h2>
+        <a class="btn btn-sm btn-purple" href="../hydrostatic-osmotic-pressure.html" target="_blank" rel="noopener">流體／滲透壓模擬器</a>
+      </div>
+      <div class="card tone-green">
+        <h2><span class="dot green"></span>作答 Answer（唯讀題目）</h2>
         <label class="field">姓名／班號 Name <input type="text" id="stu-name" placeholder="例如：3A-12 Chan Tai Man" /></label>
         <div id="stu-form"></div>
         <div class="flex-gap" style="margin-top:12px">
-          <button type="button" class="btn btn-primary" id="btn-submit-quiz">提交並自動評分 Submit</button>
+          <button type="button" class="btn btn-success" id="btn-submit-quiz">提交並自動評分</button>
         </div>
         <div id="stu-result" class="hidden"></div>
       </div>`;
@@ -1243,8 +1303,25 @@ window.QDCS_SAMPLE_QUIZ = {
       const res = document.getElementById("stu-result");
       res.classList.remove("hidden");
       const pass = attempt.percent >= 50;
+      const attemptPacket = {
+        type: "qdcs_lite_attempt_v1",
+        attempt,
+        quizCode: code,
+        quizTitle: quiz.title || code
+      };
+      window._qdcsLastAttemptPacket = attemptPacket;
+      const teacherHref = teacherLink();
       res.innerHTML = `<div class="result-banner ${pass ? "pass" : "review"}">
         得分 Score：${score} / ${max}（${attempt.percent}%）— ${escapeHtml(name)}
+      </div>
+      <div class="card tone-amber" style="margin-top:10px">
+        <h2><span class="dot amber"></span>已同步到本機成績庫</h2>
+        <p class="muted">已寫入 localStorage（鍵 <code>qdcs_lite_attempts_v1</code>）。老師在同一瀏覽器開啟 <a href="${escapeHtml(teacherHref)}">teacher.html</a> → 成績分析即可看見。</p>
+        <div class="flex-gap">
+          <button type="button" class="btn btn-amber btn-sm" id="btn-copy-attempt">複製作答 JSON 給老師</button>
+          <button type="button" class="btn btn-sm" id="btn-dl-attempt">下載作答 JSON</button>
+          <a class="btn btn-sm btn-primary" href="${escapeHtml(teacherHref)}">開啟老師版</a>
+        </div>
       </div>`;
       quiz.questions.forEach((q, i) => {
         const wrap = document.getElementById("sqwrap_" + i);
@@ -1264,9 +1341,80 @@ window.QDCS_SAMPLE_QUIZ = {
         }
       });
       document.getElementById("btn-submit-quiz").disabled = true;
-      toast("已提交並儲存成績");
+      // disable inputs (read-only after submit)
+      form.querySelectorAll("input, textarea").forEach((el) => { el.disabled = true; });
+      const nameEl = document.getElementById("stu-name");
+      if (nameEl) nameEl.disabled = true;
+
+      const copyBtn = document.getElementById("btn-copy-attempt");
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          const text = JSON.stringify(window._qdcsLastAttemptPacket, null, 2);
+          navigator.clipboard.writeText(text).then(
+            () => toast("已複製作答 JSON — 請貼給老師匯入"),
+            () => toast("無法複製，請改用下載")
+          );
+        };
+      }
+      const dlBtn = document.getElementById("btn-dl-attempt");
+      if (dlBtn) {
+        dlBtn.onclick = () => {
+          const name = driveSafeStem(code, "attempt-" + (attempt.name || "stu").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 12) || "stu") + ".json";
+          downloadBlob(name, new Blob([JSON.stringify(window._qdcsLastAttemptPacket, null, 2)], { type: "application/json" }));
+          toast("已下載 " + name);
+        };
+      }
+
+      toast("已提交 — 本機已同步；跨裝置請複製／下載 JSON");
       res.scrollIntoView({ behavior: "smooth" });
     };
+  }
+
+  function importAttemptsJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const incoming = [];
+        if (data && data.type === "qdcs_lite_attempt_v1" && data.attempt) incoming.push(data.attempt);
+        else if (data && data.type === "qdcs_lite_attempts_bundle_v1" && Array.isArray(data.attempts)) incoming.push(...data.attempts);
+        else if (Array.isArray(data)) incoming.push(...data);
+        else if (data && data.id && data.code) incoming.push(data);
+        else throw new Error("無法識別作答格式");
+        const attempts = loadAttempts();
+        let added = 0;
+        incoming.forEach((att) => {
+          if (!att || !att.id || !att.code) return;
+          if (attempts.some((a) => a.id === att.id)) return;
+          attempts.push(att);
+          added++;
+        });
+        saveAttempts(attempts);
+        toast("已匯入 " + added + " 筆作答（略過重複）");
+        if (document.getElementById("analytics-code")) {
+          renderAnalyticsSelect();
+          renderAnalytics();
+        }
+      } catch (e) {
+        toast("匯入失敗：" + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function exportAllAttemptsBundle() {
+    const code = (document.getElementById("analytics-code") || {}).value || (document.getElementById("drive-export-code") || {}).value || "";
+    let attempts = loadAttempts();
+    if (code) attempts = attempts.filter((a) => a.code === code);
+    const bundle = {
+      type: "qdcs_lite_attempts_bundle_v1",
+      exportedAt: new Date().toISOString(),
+      code: code || null,
+      attempts
+    };
+    const stem = driveSafeStem(code || "ALL", "attempts-bundle") + ".json";
+    downloadBlob(stem, new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" }));
+    toast("已下載 " + stem);
   }
 
   // ——— analytics ———
@@ -1717,6 +1865,25 @@ window.QDCS_SAMPLE_QUIZ = {
         exportAttemptsCsv();
       };
     }
+    const btnBundle = document.getElementById("btn-export-attempts-json");
+    if (btnBundle) btnBundle.onclick = exportAllAttemptsBundle;
+    const importAtt = document.getElementById("import-attempts-file");
+    if (importAtt) {
+      importAtt.onchange = (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) importAttemptsJson(f);
+        importAtt.value = "";
+      };
+    }
+    // Live sync: other tab (student) writes attempts → refresh analytics if open
+    window.addEventListener("storage", (ev) => {
+      if (ev.key !== LS_ATTEMPTS) return;
+      if (pageMode() === "teacher" || pageMode() === "hub") {
+        const panel = document.getElementById("panel-analytics");
+        if (panel && panel.classList.contains("active")) renderAnalytics();
+        toast("偵測到新作答（其他分頁已同步）");
+      }
+    });
 
     const mode = pageMode();
     document.body.setAttribute("data-mode", mode);
